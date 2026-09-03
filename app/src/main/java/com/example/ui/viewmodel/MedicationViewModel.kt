@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.AppDatabase
+import com.example.data.MealSchedule
+import com.example.data.MealScheduleManager
 import com.example.data.Medicine
 import com.example.data.MedicineRepository
 import com.example.data.RoutineSlot
@@ -43,6 +45,9 @@ class MedicationViewModel(application: Application) : AndroidViewModel(applicati
 
     private val repository: MedicineRepository
     private val notificationHelper: NotificationAndAudioHelper
+    private val mealScheduleManager: MealScheduleManager = MealScheduleManager(application)
+
+    val mealSchedule: StateFlow<MealSchedule> = mealScheduleManager.schedule
 
     private val _currentDate = MutableStateFlow(getCurrentDateString())
     val currentDate: StateFlow<String> = _currentDate.asStateFlow()
@@ -134,6 +139,27 @@ class MedicationViewModel(application: Application) : AndroidViewModel(applicati
         _selectedFilterSlot.value = slotName
     }
 
+    fun updateMealTimes(
+        breakfast: String,
+        lunch: String,
+        snacks: String,
+        dinner: String,
+        bedtime: String,
+        detailedSlots: Map<RoutineSlot, String>
+    ) {
+        mealScheduleManager.updateMealTimes(
+            breakfast = breakfast,
+            lunch = lunch,
+            snacks = snacks,
+            dinner = dinner,
+            bedtime = bedtime,
+            autoRecalculateSlots = false
+        )
+        detailedSlots.forEach { (slot, time) ->
+            mealScheduleManager.updateSpecificSlotTime(slot, time)
+        }
+    }
+
     fun toggleDoseTaken(medicine: Medicine, slot: RoutineSlot, currentTaken: Boolean) {
         viewModelScope.launch(Dispatchers.IO) {
             repository.setIntakeStatus(
@@ -168,29 +194,35 @@ class MedicationViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun testAudioAlert() {
-        notificationHelper.playSoftAudioAlert()
+        notificationHelper.playAlarmTone()
         val firstMed = allMedicines.value.firstOrNull() ?: Medicine(
             name = "Paracetamol",
             form = "Tablet",
             dosageQuantity = "1/2",
             dosageUnit = "Tablet",
             routineSlots = "AFTER_BREAKFAST",
-            alertTime = "08:30"
+            alertTime = mealSchedule.value.afterBreakfastTime
         )
         _activeAlert.value = Pair(firstMed, RoutineSlot.AFTER_BREAKFAST)
         notificationHelper.showMedicationNotification(firstMed, RoutineSlot.AFTER_BREAKFAST.title)
     }
 
     fun dismissAlert() {
+        notificationHelper.stopAlarmTone()
         _activeAlert.value = null
     }
 
     fun markAlertTaken() {
+        notificationHelper.stopAlarmTone()
         val alert = _activeAlert.value
         if (alert != null) {
             toggleDoseTaken(alert.first, alert.second, false)
         }
         _activeAlert.value = null
+    }
+
+    fun stopAlarm() {
+        notificationHelper.stopAlarmTone()
     }
 
     private fun startMidnightAndAlertTicker() {
@@ -218,7 +250,7 @@ class MedicationViewModel(application: Application) : AndroidViewModel(applicati
                         if (med.alertTime == currentTimeStr) {
                             val slots = med.getSlotsList()
                             val firstSlot = slots.firstOrNull()?.let { RoutineSlot.fromId(it) } ?: RoutineSlot.BEFORE_BREAKFAST
-                            notificationHelper.playSoftAudioAlert()
+                            notificationHelper.playAlarmTone()
                             notificationHelper.showMedicationNotification(med, firstSlot.title)
                             _activeAlert.value = Pair(med, firstSlot)
                         }
@@ -229,3 +261,4 @@ class MedicationViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 }
+

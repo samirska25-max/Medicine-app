@@ -413,11 +413,25 @@
       <div class="brand-subtitle" id="current-date-display">Today's Schedule</div>
     </div>
     <div class="header-actions">
-      <button class="btn-outline" onclick="playSoftChime()">🔔 Test Alert Sound</button>
+      <button class="btn-outline" onclick="openMealTimesModal()">🍽️ Meal Times</button>
+      <button class="btn-outline" onclick="testPhoneAlarm()">⏰ Test Alarm Sound</button>
       <button class="btn-outline" onclick="resetDayChecklist()">🔄 Reset Today</button>
       <button class="btn-primary" onclick="openAddMedicineModal()">+ Add Medicine</button>
     </div>
   </header>
+
+  <!-- Customized Meal Times Banner -->
+  <div class="summary-card" style="background: #F0FDF4; border: 1px solid #BBF7D0; margin-bottom: 16px; padding: 12px 18px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; width: 100%;">
+      <div>
+        <strong style="color: #166534;">Customized Meal Times:</strong>
+        <span style="font-size: 0.9rem; color: #15803D; margin-left: 8px;">
+          🍳 Breakfast: <b id="disp-breakfast">08:00</b> • 🥗 Lunch: <b id="disp-lunch">13:00</b> • 🥪 Snacks: <b id="disp-snacks">17:00</b> • 🍲 Dinner: <b id="disp-dinner">20:00</b>
+        </span>
+      </div>
+      <button class="btn-outline" style="padding: 4px 12px; font-size: 0.85rem;" onclick="openMealTimesModal()">⚙️ Customize Times</button>
+    </div>
+  </div>
 
   <!-- Daily Summary & Progress -->
   <div class="summary-card">
@@ -541,18 +555,71 @@
     </div>
   </div>
 
+  <!-- Meal Times Customization Modal -->
+  <div class="modal-overlay" id="meal-modal">
+    <div class="modal-box">
+      <h2>🍽️ Customize Meal & Routine Times</h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
+        Set the typical times you have your daily meals. Your medicine schedules and notifications will align with these times.
+      </p>
+      <form id="meal-form" onsubmit="handleSaveMealTimes(event)">
+        <div class="form-group">
+          <label for="meal-breakfast">🍳 Breakfast Time *</label>
+          <input type="time" id="meal-breakfast" required value="08:00">
+          <small style="color: var(--text-muted);">Before Breakfast: 30m prior • After Breakfast: 30m after</small>
+        </div>
+
+        <div class="form-group">
+          <label for="meal-lunch">🥗 Lunch Time *</label>
+          <input type="time" id="meal-lunch" required value="13:00">
+          <small style="color: var(--text-muted);">Before Lunch: 30m prior • After Lunch: 30m after</small>
+        </div>
+
+        <div class="form-group">
+          <label for="meal-snacks">🥪 Afternoon / Evening Snacks *</label>
+          <input type="time" id="meal-snacks" required value="17:00">
+        </div>
+
+        <div class="form-group">
+          <label for="meal-dinner">🍲 Dinner Time *</label>
+          <input type="time" id="meal-dinner" required value="20:00">
+          <small style="color: var(--text-muted);">Before Dinner: 30m prior • After Dinner: 30m after</small>
+        </div>
+
+        <div class="form-group">
+          <label for="meal-bedtime">🌙 Bedtime *</label>
+          <input type="time" id="meal-bedtime" required value="22:00">
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-outline" onclick="closeMealTimesModal()">Cancel</button>
+          <button type="submit" class="btn-primary">Save Meal Times</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- In-App Notification / Alarm Modal -->
   <div class="alert-modal" id="alert-popup">
-    <div style="font-size: 1.5rem; margin-bottom: 4px;">⏰ Scheduled Medication!</div>
+    <div style="font-size: 1.5rem; margin-bottom: 4px;">⏰ Phone Alarm Ringing!</div>
     <div id="alert-popup-msg" style="font-weight: 700; color: var(--primary); margin-bottom: 8px;"></div>
     <div style="display: flex; gap: 8px; justify-content: flex-end;">
-      <button class="btn-outline" onclick="dismissAlert()">Dismiss</button>
+      <button class="btn-outline" onclick="dismissAlert()">Dismiss / Stop Alarm</button>
       <button class="btn-primary" id="alert-taken-btn">Mark Taken</button>
     </div>
   </div>
 
   <script>
-    const ROUTINE_SLOTS = [
+    const STORAGE_KEY_MEALS = "daily_med_meal_schedule";
+    let mealSchedule = {
+      breakfast: "08:00",
+      lunch: "13:00",
+      snacks: "17:00",
+      dinner: "20:00",
+      bedtime: "22:00"
+    };
+
+    let ROUTINE_SLOTS = [
       { id: "BEFORE_BREAKFAST", title: "Before Breakfast", time: "07:30" },
       { id: "AFTER_BREAKFAST", title: "After Breakfast", time: "08:30" },
       { id: "BEFORE_LUNCH", title: "Before Lunch", time: "12:30" },
@@ -574,6 +641,7 @@
     // Initialize
     window.addEventListener("DOMContentLoaded", () => {
       checkMidnightReset();
+      loadMealSchedule();
       loadStorageData();
       renderSlotCheckboxes();
       renderChecklist();
@@ -690,7 +758,7 @@
       container.innerHTML = ROUTINE_SLOTS.map(slot => `
         <label class="slot-checkbox-label">
           <input type="checkbox" value="${slot.id}" ${selectedSlots.includes(slot.id) ? "checked" : ""}>
-          ${slot.title}
+          ${slot.title} <small style="color: var(--text-muted); font-size: 0.8rem;">(${slot.time})</small>
         </label>
       `).join("");
     }
@@ -743,7 +811,7 @@
         return `
           <div class="slot-group">
             <div class="slot-header">
-              <span>${slot.title}</span>
+              <span>${slot.title} <small style="font-weight: 500; opacity: 0.85; margin-left: 6px;">(${slot.time})</small></span>
               <span class="slot-badge">${slotTakenCount}/${medsInSlot.length} Taken</span>
             </div>
             ${slotItemsHtml}
@@ -986,42 +1054,155 @@
       document.getElementById("view-manage").style.display = tab === "manage" ? "block" : "none";
     }
 
-    // Audio Chime & Notifications
-    function playSoftChime() {
+    // Meal Times Management
+    function openMealTimesModal() {
+      document.getElementById("meal-breakfast").value = mealSchedule.breakfast || "08:00";
+      document.getElementById("meal-lunch").value = mealSchedule.lunch || "13:00";
+      document.getElementById("meal-snacks").value = mealSchedule.snacks || "17:00";
+      document.getElementById("meal-dinner").value = mealSchedule.dinner || "20:00";
+      document.getElementById("meal-bedtime").value = mealSchedule.bedtime || "22:00";
+      document.getElementById("meal-modal").classList.add("active");
+    }
+
+    function closeMealTimesModal() {
+      document.getElementById("meal-modal").classList.remove("active");
+    }
+
+    function addMinutesToTime(timeStr, minutesDelta) {
+      try {
+        const [h, m] = timeStr.split(":").map(Number);
+        let totalMin = h * 60 + m + minutesDelta;
+        while (totalMin < 0) totalMin += 24 * 60;
+        totalMin = totalMin % (24 * 60);
+        const resH = String(Math.floor(totalMin / 60)).padStart(2, "0");
+        const resM = String(totalMin % 60).padStart(2, "0");
+        return `${resH}:${resM}`;
+      } catch (e) {
+        return timeStr;
+      }
+    }
+
+    function applyMealScheduleToSlots() {
+      ROUTINE_SLOTS.forEach(slot => {
+        switch (slot.id) {
+          case "BEFORE_BREAKFAST":
+            slot.time = addMinutesToTime(mealSchedule.breakfast, -30);
+            break;
+          case "AFTER_BREAKFAST":
+            slot.time = addMinutesToTime(mealSchedule.breakfast, 30);
+            break;
+          case "BEFORE_LUNCH":
+            slot.time = addMinutesToTime(mealSchedule.lunch, -30);
+            break;
+          case "AFTER_LUNCH":
+            slot.time = addMinutesToTime(mealSchedule.lunch, 30);
+            break;
+          case "AFTERNOON_SNACK":
+            slot.time = mealSchedule.snacks;
+            break;
+          case "BEFORE_DINNER":
+            slot.time = addMinutesToTime(mealSchedule.dinner, -30);
+            break;
+          case "AFTER_DINNER":
+            slot.time = addMinutesToTime(mealSchedule.dinner, 30);
+            break;
+          case "BEDTIME":
+            slot.time = mealSchedule.bedtime;
+            break;
+        }
+      });
+
+      // Update banner displays
+      const bEl = document.getElementById("disp-breakfast");
+      const lEl = document.getElementById("disp-lunch");
+      const sEl = document.getElementById("disp-snacks");
+      const dEl = document.getElementById("disp-dinner");
+      if (bEl) bEl.textContent = mealSchedule.breakfast;
+      if (lEl) lEl.textContent = mealSchedule.lunch;
+      if (sEl) sEl.textContent = mealSchedule.snacks;
+      if (dEl) dEl.textContent = mealSchedule.dinner;
+    }
+
+    function handleSaveMealTimes(e) {
+      e.preventDefault();
+      mealSchedule = {
+        breakfast: document.getElementById("meal-breakfast").value,
+        lunch: document.getElementById("meal-lunch").value,
+        snacks: document.getElementById("meal-snacks").value,
+        dinner: document.getElementById("meal-dinner").value,
+        bedtime: document.getElementById("meal-bedtime").value
+      };
+      localStorage.setItem(STORAGE_KEY_MEALS, JSON.stringify(mealSchedule));
+      applyMealScheduleToSlots();
+      closeMealTimesModal();
+      renderSlotCheckboxes();
+      renderChecklist();
+      renderManageList();
+    }
+
+    function loadMealSchedule() {
+      const saved = localStorage.getItem(STORAGE_KEY_MEALS);
+      if (saved) {
+        try {
+          mealSchedule = Object.assign(mealSchedule, JSON.parse(saved));
+        } catch (e) {
+          console.error("Failed to parse meal schedule", e);
+        }
+      }
+      applyMealScheduleToSlots();
+    }
+
+    // Phone Alarm Tone Engine (Web Audio API)
+    let alarmInterval = null;
+
+    function playPhoneAlarmPulse() {
       try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         if (!audioContext) audioContext = new AudioCtx();
         if (audioContext.state === "suspended") audioContext.resume();
 
-        // Pleasant melodic chime (C5 then G5 note)
         const now = audioContext.currentTime;
-        
-        const osc1 = audioContext.createOscillator();
-        const gain1 = audioContext.createGain();
-        osc1.type = "sine";
-        osc1.frequency.setValueAtTime(523.25, now); // C5
-        gain1.gain.setValueAtTime(0, now);
-        gain1.gain.linearRampToValueAtTime(0.2, now + 0.05);
-        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-        osc1.connect(gain1);
-        gain1.connect(audioContext.destination);
-        osc1.start(now);
-        osc1.stop(now + 0.6);
-
-        const osc2 = audioContext.createOscillator();
-        const gain2 = audioContext.createGain();
-        osc2.type = "sine";
-        osc2.frequency.setValueAtTime(783.99, now + 0.2); // G5
-        gain2.gain.setValueAtTime(0, now + 0.2);
-        gain2.gain.linearRampToValueAtTime(0.25, now + 0.25);
-        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
-        osc2.connect(gain2);
-        gain2.connect(audioContext.destination);
-        osc2.start(now + 0.2);
-        osc2.stop(now + 0.85);
+        // Phone alarm burst: 4 rapid alternating high-frequency beeps (880Hz & 1175Hz)
+        [0, 0.12, 0.24, 0.36].forEach((offset, idx) => {
+          const osc = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          osc.type = "square"; // Crisp buzzer / phone alarm tone
+          osc.frequency.setValueAtTime(idx % 2 === 0 ? 880 : 1175, now + offset);
+          
+          gain.gain.setValueAtTime(0.2, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + offset + 0.09);
+          
+          osc.connect(gain);
+          gain.connect(audioContext.destination);
+          osc.start(now + offset);
+          osc.stop(now + offset + 0.1);
+        });
       } catch (e) {
         console.log("Audio not supported", e);
       }
+    }
+
+    function startPhoneAlarmSound() {
+      stopPhoneAlarmSound();
+      playPhoneAlarmPulse();
+      alarmInterval = setInterval(playPhoneAlarmPulse, 1000);
+    }
+
+    function stopPhoneAlarmSound() {
+      if (alarmInterval) {
+        clearInterval(alarmInterval);
+        alarmInterval = null;
+      }
+    }
+
+    function testPhoneAlarm() {
+      startPhoneAlarmSound();
+      const modal = document.getElementById("alert-popup");
+      document.getElementById("alert-popup-msg").textContent = "Test Alarm: Phone alarm tone ringing!";
+      document.getElementById("alert-taken-btn").onclick = () => {
+        dismissAlert();
+      };
+      modal.classList.add("active");
     }
 
     function requestPushNotifications() {
@@ -1032,7 +1213,7 @@
       Notification.requestPermission().then(permission => {
         if (permission === "granted") {
           new Notification("Medication Reminder", {
-            body: "Notifications are now active for your routine schedules!",
+            body: "Notifications are now active with phone alarm alert!",
             icon: ""
           });
         }
@@ -1040,10 +1221,10 @@
     }
 
     function triggerScheduledAlert(med, slotId) {
-      playSoftChime();
+      startPhoneAlarmSound();
 
       if ("Notification" in window && Notification.permission === "granted") {
-        new Notification(`Medication Reminder: ${med.name}`, {
+        new Notification(`⏰ Alarm: ${med.name}`, {
           body: `Time for ${formatFormattedDose(med)} (${slotId})`,
         });
       }
@@ -1059,6 +1240,7 @@
     }
 
     function dismissAlert() {
+      stopPhoneAlarmSound();
       document.getElementById("alert-popup").classList.remove("active");
     }
 

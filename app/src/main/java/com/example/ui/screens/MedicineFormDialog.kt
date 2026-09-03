@@ -48,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
+import com.example.data.MealSchedule
 import com.example.data.Medicine
 import com.example.data.MedicineForm
 import com.example.data.RoutineSlot
@@ -58,6 +59,7 @@ import java.util.Locale
 @Composable
 fun MedicineFormDialog(
     initialMedicine: Medicine? = null,
+    mealSchedule: MealSchedule = MealSchedule(),
     onDismiss: () -> Unit,
     onSave: (Medicine) -> Unit
 ) {
@@ -109,7 +111,9 @@ fun MedicineFormDialog(
     }
 
     // Alert Time
-    var alertTime by remember { mutableStateOf(initialMedicine?.alertTime ?: "08:30") }
+    var alertTime by remember {
+        mutableStateOf(initialMedicine?.alertTime ?: mealSchedule.afterBreakfastTime)
+    }
 
     // Special Instructions
     var specialInstructions by remember { mutableStateOf(initialMedicine?.specialInstructions ?: "") }
@@ -375,7 +379,7 @@ fun MedicineFormDialog(
                                     fontWeight = FontWeight.Medium
                                 )
                                 Text(
-                                    text = "Scheduled: ${slot.defaultTime}",
+                                    text = "Scheduled: ${mealSchedule.getTimeForSlot(slot)}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

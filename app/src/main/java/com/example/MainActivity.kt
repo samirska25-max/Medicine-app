@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Medication
 import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -44,6 +45,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.Medicine
 import com.example.ui.screens.ActiveAlertDialog
 import com.example.ui.screens.DailyChecklistScreen
+import com.example.ui.screens.MealTimesDialog
 import com.example.ui.screens.MedicineFormDialog
 import com.example.ui.screens.MedicineManagementScreen
 import com.example.ui.screens.WebAppPreviewScreen
@@ -73,6 +75,7 @@ fun MedicationApp(viewModel: MedicationViewModel) {
 
     // Dialog state
     var showMedicineDialog by remember { mutableStateOf(false) }
+    var showMealTimesDialog by remember { mutableStateOf(false) }
     var medicineToEdit by remember { mutableStateOf<Medicine?>(null) }
 
     // State from ViewModel
@@ -82,6 +85,7 @@ fun MedicationApp(viewModel: MedicationViewModel) {
     val allMedicines by viewModel.allMedicines.collectAsStateWithLifecycle()
     val selectedFilter by viewModel.selectedFilterSlot.collectAsStateWithLifecycle()
     val activeAlert by viewModel.activeAlert.collectAsStateWithLifecycle()
+    val mealSchedule by viewModel.mealSchedule.collectAsStateWithLifecycle()
 
     // Notification permission request for Android 13+
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -112,6 +116,15 @@ fun MedicationApp(viewModel: MedicationViewModel) {
                     )
                 },
                 actions = {
+                    IconButton(
+                        onClick = { showMealTimesDialog = true },
+                        modifier = Modifier.testTag("top_bar_meal_times")
+                    ) {
+                        Icon(
+                            Icons.Default.Restaurant,
+                            contentDescription = "Customize Meal Times"
+                        )
+                    }
                     IconButton(
                         onClick = { viewModel.testAudioAlert() },
                         modifier = Modifier.testTag("top_bar_test_alert")
@@ -165,6 +178,8 @@ fun MedicationApp(viewModel: MedicationViewModel) {
                     progressStats = progressStats,
                     groups = groups,
                     selectedFilter = selectedFilter,
+                    mealSchedule = mealSchedule,
+                    onOpenMealTimes = { showMealTimesDialog = true },
                     onFilterSelect = { viewModel.setFilterSlot(it) },
                     onToggleTaken = { med, slot, currentTaken ->
                         viewModel.toggleDoseTaken(med, slot, currentTaken)
@@ -179,6 +194,7 @@ fun MedicationApp(viewModel: MedicationViewModel) {
 
                 1 -> MedicineManagementScreen(
                     medicines = allMedicines,
+                    mealSchedule = mealSchedule,
                     onAddMedicine = {
                         medicineToEdit = null
                         showMedicineDialog = true
@@ -200,6 +216,7 @@ fun MedicationApp(viewModel: MedicationViewModel) {
         if (showMedicineDialog) {
             MedicineFormDialog(
                 initialMedicine = medicineToEdit,
+                mealSchedule = mealSchedule,
                 onDismiss = {
                     showMedicineDialog = false
                     medicineToEdit = null
@@ -208,6 +225,18 @@ fun MedicationApp(viewModel: MedicationViewModel) {
                     viewModel.saveMedicine(savedMed)
                     showMedicineDialog = false
                     medicineToEdit = null
+                }
+            )
+        }
+
+        // Customize Meal Times Dialog
+        if (showMealTimesDialog) {
+            MealTimesDialog(
+                initialSchedule = mealSchedule,
+                onDismiss = { showMealTimesDialog = false },
+                onSave = { breakfast, lunch, snacks, dinner, bedtime, map ->
+                    viewModel.updateMealTimes(breakfast, lunch, snacks, dinner, bedtime, map)
+                    showMealTimesDialog = false
                 }
             )
         }

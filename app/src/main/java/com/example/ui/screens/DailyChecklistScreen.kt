@@ -30,6 +30,8 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -41,6 +43,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -58,6 +61,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.MealSchedule
 import com.example.data.Medicine
 import com.example.data.RoutineSlot
 import com.example.ui.theme.MedSuccessBg
@@ -74,6 +78,8 @@ fun DailyChecklistScreen(
     progressStats: DailyProgressStats,
     groups: List<RoutineSlotGroup>,
     selectedFilter: String,
+    mealSchedule: MealSchedule = MealSchedule(),
+    onOpenMealTimes: () -> Unit = {},
     onFilterSelect: (String) -> Unit,
     onToggleTaken: (Medicine, RoutineSlot, Boolean) -> Unit,
     onResetToday: () -> Unit,
@@ -209,6 +215,64 @@ fun DailyChecklistScreen(
             }
         }
 
+        // Customized Meal Times Card
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("card_meal_schedule"),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Restaurant,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "Customized Meal Times",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                        Text(
+                            text = "Breakfast: ${mealSchedule.breakfastTime} • Lunch: ${mealSchedule.lunchTime} • Snacks: ${mealSchedule.snacksTime} • Dinner: ${mealSchedule.dinnerTime}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = onOpenMealTimes,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.testTag("button_customize_meal_times")
+                    ) {
+                        Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Customize", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+            }
+        }
+
         // Quick Routine Slot Filters
         item {
             LazyRow(
@@ -275,6 +339,7 @@ fun DailyChecklistScreen(
         items(groups, key = { it.slot.name }) { group ->
             RoutineSlotSection(
                 group = group,
+                mealSchedule = mealSchedule,
                 onToggleTaken = onToggleTaken
             )
         }
@@ -284,6 +349,7 @@ fun DailyChecklistScreen(
 @Composable
 fun RoutineSlotSection(
     group: RoutineSlotGroup,
+    mealSchedule: MealSchedule,
     onToggleTaken: (Medicine, RoutineSlot, Boolean) -> Unit
 ) {
     val totalInSlot = group.items.size
@@ -319,12 +385,19 @@ fun RoutineSlotSection(
                             .clip(CircleShape)
                             .background(if (isSlotDone) MedSuccessGreen else MaterialTheme.colorScheme.primary)
                     )
-                    Text(
-                        text = group.slot.title,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    Column {
+                        Text(
+                            text = group.slot.title,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Scheduled: ${mealSchedule.getTimeForSlot(group.slot)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
                 Surface(

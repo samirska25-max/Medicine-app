@@ -50,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.data.MealSchedule
 import com.example.data.Medicine
 import com.example.data.RoutineSlot
 
@@ -57,6 +58,7 @@ import com.example.data.RoutineSlot
 @Composable
 fun MedicineManagementScreen(
     medicines: List<Medicine>,
+    mealSchedule: MealSchedule = MealSchedule(),
     onAddMedicine: () -> Unit,
     onEditMedicine: (Medicine) -> Unit,
     onDeleteMedicine: (Medicine) -> Unit
@@ -247,7 +249,7 @@ fun MedicineManagementScreen(
                                             color = MaterialTheme.colorScheme.secondaryContainer
                                         ) {
                                             Text(
-                                                text = slot.title,
+                                                text = "${slot.title} (${mealSchedule.getTimeForSlot(slot)})",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
