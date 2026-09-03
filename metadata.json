@@ -1,0 +1,6 @@
+{
+  "name": "Medication Reminder",
+  "description": "Daily medication reminder and schedule checklist with smart dosage selection, routine slot categorization, and alerts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
