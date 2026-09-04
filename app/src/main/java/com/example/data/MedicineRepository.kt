@@ -4,34 +4,31 @@ import kotlinx.coroutines.flow.Flow
 
 class MedicineRepository(private val dao: MedicineDao) {
 
-    val allMedicines: Flow<List<Medicine>> = dao.getAllMedicines()
+    val allMedicines: Flow<List<MedicineEntity>> = dao.getAllMedicines()
+    val activeMedicines: Flow<List<MedicineEntity>> = dao.getActiveMedicines()
 
-    suspend fun getMedicineById(id: Long): Medicine? = dao.getMedicineById(id)
+    suspend fun getMedicineById(id: Long): MedicineEntity? = dao.getMedicineById(id)
 
-    suspend fun insertMedicine(medicine: Medicine): Long = dao.insertMedicine(medicine)
+    suspend fun insertMedicine(medicine: MedicineEntity): Long = dao.insertMedicine(medicine)
 
-    suspend fun updateMedicine(medicine: Medicine) = dao.updateMedicine(medicine)
+    suspend fun updateMedicine(medicine: MedicineEntity) = dao.updateMedicine(medicine)
 
-    suspend fun deleteMedicine(medicine: Medicine) {
-        dao.deleteIntakeRecordsForMedicine(medicine.id)
+    suspend fun deleteMedicine(medicine: MedicineEntity) {
+        dao.deleteRecordsForMedicine(medicine.id)
         dao.deleteMedicine(medicine)
     }
 
-    fun getIntakeRecordsForDate(dateString: String): Flow<List<IntakeRecord>> =
-        dao.getIntakeRecordsForDate(dateString)
+    fun getRecordsForDate(dateString: String): Flow<List<DoseRecordEntity>> =
+        dao.getRecordsForDate(dateString)
 
-    suspend fun setIntakeStatus(medicineId: Long, slot: String, dateString: String, taken: Boolean) {
-        val record = IntakeRecord(
-            medicineId = medicineId,
-            routineSlot = slot,
-            dateString = dateString,
-            taken = taken,
-            takenTimestamp = if (taken) System.currentTimeMillis() else null
-        )
-        dao.upsertIntakeRecord(record)
+    fun getRecordsInRange(startDate: String, endDate: String): Flow<List<DoseRecordEntity>> =
+        dao.getRecordsInRange(startDate, endDate)
+
+    suspend fun updateDoseStatus(recordId: Long, status: String, timestamp: Long?) {
+        dao.updateDoseStatus(recordId, status, timestamp)
     }
 
-    suspend fun resetIntakeForDate(dateString: String) {
-        dao.resetIntakeRecordsForDate(dateString)
+    suspend fun resetRecordsForDate(dateString: String) {
+        dao.resetRecordsForDate(dateString)
     }
 }

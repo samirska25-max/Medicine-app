@@ -15,11 +15,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Medication
 import androidx.compose.material.icons.filled.NotificationsActive
-import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,26 +45,24 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.data.Medicine
-import com.example.ui.screens.ActiveAlertDialog
-import com.example.ui.screens.DailyChecklistScreen
-import com.example.ui.screens.MealTimesDialog
-import com.example.ui.screens.MedicineFormDialog
-import com.example.ui.screens.MedicineManagementScreen
-import com.example.ui.screens.WebAppPreviewScreen
+import com.example.data.MedicineEntity
+import com.example.ui.screens.AddEditMedicineDialog
+import com.example.ui.screens.HistoryScreen
+import com.example.ui.screens.HomeScreen
+import com.example.ui.screens.MedicineListScreen
 import com.example.ui.theme.MyApplicationTheme
-import com.example.ui.viewmodel.MedicationViewModel
+import com.example.ui.viewmodel.MedicineViewModel
 
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: MedicationViewModel by viewModels()
+    private val viewModel: MedicineViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             MyApplicationTheme {
-                MedicationApp(viewModel)
+                MedicineTrackerApp(viewModel)
             }
         }
     }
@@ -69,23 +70,22 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MedicationApp(viewModel: MedicationViewModel) {
+fun MedicineTrackerApp(viewModel: MedicineViewModel) {
     val context = LocalContext.current
     var selectedTab by remember { mutableIntStateOf(0) }
 
     // Dialog state
-    var showMedicineDialog by remember { mutableStateOf(false) }
-    var showMealTimesDialog by remember { mutableStateOf(false) }
-    var medicineToEdit by remember { mutableStateOf<Medicine?>(null) }
+    var showAddEditDialog by remember { mutableStateOf(false) }
+    var medicineToEdit by remember { mutableStateOf<MedicineEntity?>(null) }
 
     // State from ViewModel
-    val dateDisplay by viewModel.displayDate.collectAsStateWithLifecycle()
-    val progressStats by viewModel.dailyProgress.collectAsStateWithLifecycle()
-    val groups by viewModel.checklistGroups.collectAsStateWithLifecycle()
     val allMedicines by viewModel.allMedicines.collectAsStateWithLifecycle()
-    val selectedFilter by viewModel.selectedFilterSlot.collectAsStateWithLifecycle()
-    val activeAlert by viewModel.activeAlert.collectAsStateWithLifecycle()
-    val mealSchedule by viewModel.mealSchedule.collectAsStateWithLifecycle()
+    val filteredTodayRecords by viewModel.filteredTodayRecords.collectAsStateWithLifecycle()
+    val todayStats by viewModel.todayStats.collectAsStateWithLifecycle()
+    val selectedFilter by viewModel.slotFilter.collectAsStateWithLifecycle()
+    val historyRecords by viewModel.historyRecords.collectAsStateWithLifecycle()
+    val historyStats by viewModel.historyStats.collectAsStateWithLifecycle()
+    val historyDays by viewModel.historyRangeDays.collectAsStateWithLifecycle()
 
     // Notification permission request for Android 13+
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -110,29 +110,24 @@ fun MedicationApp(viewModel: MedicationViewModel) {
             TopAppBar(
                 title = {
                     Text(
-                        text = "Medication Reminder",
+                        text = "Medicine Tracker & Reminder",
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleLarge
                     )
                 },
                 actions = {
-                    IconButton(
-                        onClick = { showMealTimesDialog = true },
-                        modifier = Modifier.testTag("top_bar_meal_times")
-                    ) {
-                        Icon(
-                            Icons.Default.Restaurant,
-                            contentDescription = "Customize Meal Times"
-                        )
-                    }
-                    IconButton(
-                        onClick = { viewModel.testAudioAlert() },
-                        modifier = Modifier.testTag("top_bar_test_alert")
-                    ) {
-                        Icon(
-                            Icons.Default.NotificationsActive,
-                            contentDescription = "Test Alert Sound"
-                        )
+                    if (allMedicines.isNotEmpty()) {
+                        IconButton(
+                            onClick = {
+                                viewModel.triggerTestAlarm(allMedicines.first())
+                            },
+                            modifier = Modifier.testTag("top_bar_test_alarm")
+                        ) {
+                            Icon(
+                                Icons.Default.NotificationsActive,
+                                contentDescription = "Test Alarm Notification"
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -141,28 +136,59 @@ fun MedicationApp(viewModel: MedicationViewModel) {
                 )
             )
         },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    medicineToEdit = null
+                    showAddEditDialog = true
+                },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.testTag("fab_add_medicine")
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Medication")
+            }
+        },
         bottomBar = {
             NavigationBar(modifier = Modifier.testTag("bottom_navigation")) {
                 NavigationBarItem(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Daily Checklist") },
-                    label = { Text("Checklist") },
-                    modifier = Modifier.testTag("nav_item_checklist")
+                    icon = {
+                        BadgedBox(badge = {
+                            if (todayStats.pendingDoses > 0) {
+                                Badge { Text("${todayStats.pendingDoses}") }
+                            }
+                        }) {
+                            Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Today Schedule")
+                        }
+                    },
+                    label = { Text("Today") },
+                    modifier = Modifier.testTag("nav_item_today")
                 )
+
                 NavigationBarItem(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    icon = { Icon(Icons.Default.Medication, contentDescription = "Medicines") },
-                    label = { Text("Medicines (${allMedicines.size})") },
+                    icon = {
+                        BadgedBox(badge = {
+                            if (allMedicines.isNotEmpty()) {
+                                Badge { Text("${allMedicines.size}") }
+                            }
+                        }) {
+                            Icon(Icons.Default.Medication, contentDescription = "Medications")
+                        }
+                    },
+                    label = { Text("Medicines") },
                     modifier = Modifier.testTag("nav_item_medicines")
                 )
+
                 NavigationBarItem(
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2 },
-                    icon = { Icon(Icons.Default.Language, contentDescription = "Web App View") },
-                    label = { Text("Web Mode") },
-                    modifier = Modifier.testTag("nav_item_web")
+                    icon = { Icon(Icons.Default.History, contentDescription = "Adherence History") },
+                    label = { Text("History") },
+                    modifier = Modifier.testTag("nav_item_history")
                 )
             }
         }
@@ -173,87 +199,72 @@ fun MedicationApp(viewModel: MedicationViewModel) {
                 .padding(innerPadding)
         ) {
             when (selectedTab) {
-                0 -> DailyChecklistScreen(
-                    dateDisplay = dateDisplay,
-                    progressStats = progressStats,
-                    groups = groups,
-                    selectedFilter = selectedFilter,
-                    mealSchedule = mealSchedule,
-                    onOpenMealTimes = { showMealTimesDialog = true },
-                    onFilterSelect = { viewModel.setFilterSlot(it) },
-                    onToggleTaken = { med, slot, currentTaken ->
-                        viewModel.toggleDoseTaken(med, slot, currentTaken)
-                    },
-                    onResetToday = { viewModel.resetTodayChecklist() },
-                    onTestAlarm = { viewModel.testAudioAlert() },
+                0 -> HomeScreen(
+                    todayRecords = filteredTodayRecords,
+                    allMedicines = allMedicines,
+                    stats = todayStats,
+                    selectedSlotFilter = selectedFilter,
+                    onFilterSelect = { viewModel.setSlotFilter(it) },
+                    onTake = { viewModel.markDoseTaken(it) },
+                    onSkip = { viewModel.skipDose(it) },
+                    onSnooze = { viewModel.snoozeDose(it, 10) },
+                    onResetToday = { viewModel.resetTodaySchedule() },
                     onAddMedicine = {
                         medicineToEdit = null
-                        showMedicineDialog = true
+                        showAddEditDialog = true
                     }
                 )
 
-                1 -> MedicineManagementScreen(
+                1 -> MedicineListScreen(
                     medicines = allMedicines,
-                    mealSchedule = mealSchedule,
                     onAddMedicine = {
                         medicineToEdit = null
-                        showMedicineDialog = true
+                        showAddEditDialog = true
                     },
                     onEditMedicine = { med ->
                         medicineToEdit = med
-                        showMedicineDialog = true
+                        showAddEditDialog = true
                     },
                     onDeleteMedicine = { med ->
                         viewModel.deleteMedicine(med)
+                    },
+                    onTestAlarm = { med ->
+                        viewModel.triggerTestAlarm(med)
                     }
                 )
 
-                2 -> WebAppPreviewScreen()
+                2 -> HistoryScreen(
+                    historyRecords = historyRecords,
+                    stats = historyStats,
+                    selectedRangeDays = historyDays,
+                    onRangeSelect = { viewModel.setHistoryRange(it) }
+                )
             }
         }
 
-        // Add / Edit Medicine Dialog
-        if (showMedicineDialog) {
-            MedicineFormDialog(
+        // Add or Edit Medication Dialog
+        if (showAddEditDialog) {
+            AddEditMedicineDialog(
                 initialMedicine = medicineToEdit,
-                mealSchedule = mealSchedule,
                 onDismiss = {
-                    showMedicineDialog = false
+                    showAddEditDialog = false
                     medicineToEdit = null
                 },
                 onSave = { savedMed ->
-                    viewModel.saveMedicine(savedMed)
-                    showMedicineDialog = false
+                    if (medicineToEdit == null) {
+                        viewModel.addMedicine(savedMed)
+                    } else {
+                        viewModel.updateMedicine(savedMed)
+                    }
+                    showAddEditDialog = false
                     medicineToEdit = null
                 }
-            )
-        }
-
-        // Customize Meal Times Dialog
-        if (showMealTimesDialog) {
-            MealTimesDialog(
-                initialSchedule = mealSchedule,
-                onDismiss = { showMealTimesDialog = false },
-                onSave = { breakfast, lunch, snacks, dinner, bedtime, map ->
-                    viewModel.updateMealTimes(breakfast, lunch, snacks, dinner, bedtime, map)
-                    showMealTimesDialog = false
-                }
-            )
-        }
-
-        // Active Scheduled Alert Dialog
-        activeAlert?.let { (med, slot) ->
-            ActiveAlertDialog(
-                medicine = med,
-                slot = slot,
-                onTakeNow = { viewModel.markAlertTaken() },
-                onDismiss = { viewModel.dismissAlert() }
             )
         }
     }
 }
 
-// Fallback composable for GreetingScreenshotTest
+// Composable for greeting screenshot tests
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {
     Text(text = "Hello $name!", modifier = modifier)

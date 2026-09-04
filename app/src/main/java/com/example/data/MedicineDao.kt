@@ -10,30 +10,68 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MedicineDao {
+    // Medicines
     @Query("SELECT * FROM medicines ORDER BY createdAt DESC")
-    fun getAllMedicines(): Flow<List<Medicine>>
+    fun getAllMedicines(): Flow<List<MedicineEntity>>
+
+    @Query("SELECT * FROM medicines WHERE isActive = 1 ORDER BY createdAt DESC")
+    fun getActiveMedicines(): Flow<List<MedicineEntity>>
+
+    @Query("SELECT * FROM medicines WHERE isActive = 1")
+    suspend fun getActiveMedicinesList(): List<MedicineEntity>
 
     @Query("SELECT * FROM medicines WHERE id = :id")
-    suspend fun getMedicineById(id: Long): Medicine?
+    suspend fun getMedicineById(id: Long): MedicineEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertMedicine(medicine: Medicine): Long
+    suspend fun insertMedicine(medicine: MedicineEntity): Long
 
     @Update
-    suspend fun updateMedicine(medicine: Medicine)
+    suspend fun updateMedicine(medicine: MedicineEntity)
 
     @Delete
-    suspend fun deleteMedicine(medicine: Medicine)
+    suspend fun deleteMedicine(medicine: MedicineEntity)
 
-    @Query("SELECT * FROM intake_records WHERE dateString = :dateString")
-    fun getIntakeRecordsForDate(dateString: String): Flow<List<IntakeRecord>>
+    @Query("DELETE FROM medicines WHERE id = :id")
+    suspend fun deleteMedicineById(id: Long)
+
+    @Query("UPDATE medicines SET stockCount = :newStock WHERE id = :medicineId")
+    suspend fun updateStock(medicineId: Long, newStock: Int)
+
+    @Query("UPDATE medicines SET stockCount = CASE WHEN stockCount > 0 THEN stockCount - 1 ELSE 0 END WHERE id = :medicineId")
+    suspend fun decrementStock(medicineId: Long)
+
+    // Dose Records for Today & Date Range
+    @Query("SELECT * FROM dose_records WHERE scheduledDate = :date ORDER BY scheduledTime ASC")
+    fun getRecordsForDate(date: String): Flow<List<DoseRecordEntity>>
+
+    @Query("SELECT * FROM dose_records WHERE scheduledDate = :date ORDER BY scheduledTime ASC")
+    suspend fun getRecordsForDateSync(date: String): List<DoseRecordEntity>
+
+    @Query("SELECT * FROM dose_records WHERE scheduledDate BETWEEN :startDate AND :endDate ORDER BY scheduledDate DESC, scheduledTime ASC")
+    fun getRecordsInRange(startDate: String, endDate: String): Flow<List<DoseRecordEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertIntakeRecord(record: IntakeRecord)
+    suspend fun insertDoseRecord(record: DoseRecordEntity): Long
 
-    @Query("DELETE FROM intake_records WHERE medicineId = :medicineId")
-    suspend fun deleteIntakeRecordsForMedicine(medicineId: Long)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDoseRecords(records: List<DoseRecordEntity>)
 
-    @Query("DELETE FROM intake_records WHERE dateString = :dateString")
-    suspend fun resetIntakeRecordsForDate(dateString: String)
+    @Update
+    suspend fun updateDoseRecord(record: DoseRecordEntity)
+
+    @Query("UPDATE dose_records SET status = :status, actionTimestamp = :timestamp WHERE id = :recordId")
+    suspend fun updateDoseStatus(recordId: Long, status: String, timestamp: Long?)
+
+    @Query("SELECT * FROM dose_records WHERE medicineId = :medicineId AND scheduledDate = :date AND scheduledTime = :time LIMIT 1")
+    suspend fun findRecord(medicineId: Long, date: String, time: String): DoseRecordEntity?
+
+    @Query("SELECT * FROM dose_records WHERE medicineId = :medicineId AND scheduledDate = :date LIMIT 1")
+    suspend fun findRecordForDate(medicineId: Long, date: String): DoseRecordEntity?
+
+    @Query("DELETE FROM dose_records WHERE medicineId = :medicineId")
+    suspend fun deleteRecordsForMedicine(medicineId: Long)
+
+    @Query("DELETE FROM dose_records WHERE scheduledDate = :date")
+    suspend fun resetRecordsForDate(date: String)
 }
