@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Inventory
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
@@ -48,10 +50,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.data.FrequencyType
 import com.example.data.MedicineEntity
+import com.example.util.AppLanguage
+import com.example.util.LanguageManager
 
 @Composable
 fun MedicineListScreen(
     medicines: List<MedicineEntity>,
+    language: AppLanguage = AppLanguage.ENGLISH,
     onAddMedicine: () -> Unit,
     onEditMedicine: (MedicineEntity) -> Unit,
     onDeleteMedicine: (MedicineEntity) -> Unit,
@@ -74,13 +79,13 @@ fun MedicineListScreen(
             ) {
                 Column {
                     Text(
-                        text = "Your Medications",
+                        text = LanguageManager.get("medicines", language),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "${medicines.size} active prescriptions / supplements",
+                        text = "${medicines.size} " + LanguageManager.get("medicines", language),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -90,7 +95,7 @@ fun MedicineListScreen(
                     onClick = onAddMedicine,
                     modifier = Modifier.testTag("btn_top_add_medicine")
                 ) {
-                    Text("+ Add")
+                    Text("+ " + LanguageManager.get("add_medicine", language))
                 }
             }
         }
@@ -134,6 +139,7 @@ fun MedicineListScreen(
             items(medicines, key = { it.id }) { medicine ->
                 MedicineManagementCard(
                     medicine = medicine,
+                    language = language,
                     onEdit = { onEditMedicine(medicine) },
                     onDelete = { medicineToDelete = medicine },
                     onTestAlarm = { onTestAlarm(medicine) }
@@ -151,7 +157,7 @@ fun MedicineListScreen(
         val med = medicineToDelete!!
         AlertDialog(
             onDismissRequest = { medicineToDelete = null },
-            title = { Text("Delete ${med.name}?") },
+            title = { Text(LanguageManager.get("delete", language) + " ${med.name}?") },
             text = {
                 Text("This will remove this medication, its local alarms, and future scheduled reminders.")
             },
@@ -161,14 +167,14 @@ fun MedicineListScreen(
                         onDeleteMedicine(med)
                         medicineToDelete = null
                     },
-                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
                 ) {
-                    Text("Delete", color = Color.White)
+                    Text(LanguageManager.get("delete", language), color = Color.White)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { medicineToDelete = null }) {
-                    Text("Cancel")
+                    Text(LanguageManager.get("cancel", language))
                 }
             }
         )
@@ -178,11 +184,20 @@ fun MedicineListScreen(
 @Composable
 fun MedicineManagementCard(
     medicine: MedicineEntity,
+    language: AppLanguage,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onTestAlarm: () -> Unit
 ) {
     val isLowStock = medicine.stockCount <= medicine.lowStockThreshold
+    val formIcon = if (medicine.medicineForm.equals("LIQUID", ignoreCase = true)) "💧" else "💊"
+    val formBadgeText = when (medicine.medicineForm) {
+        "LIQUID" -> LanguageManager.get("liquid_syrup", language)
+        "DROPS" -> LanguageManager.get("drops", language)
+        "INJECTION" -> LanguageManager.get("injection", language)
+        else -> LanguageManager.get("tablet_capsule", language)
+    }
+    val stockUnit = if (medicine.medicineForm.equals("LIQUID", ignoreCase = true)) "ml" else "units"
 
     ElevatedCard(
         modifier = Modifier
@@ -203,17 +218,51 @@ fun MedicineManagementCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = medicine.name,
+                        text = "$formIcon ${medicine.name}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Text(
-                        text = medicine.dosage,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold
-                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(top = 2.dp)
+                    ) {
+                        Text(
+                            text = medicine.dosage,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                        ) {
+                            Text(
+                                text = formBadgeText,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+
+                        if (!medicine.isRegular) {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)
+                            ) {
+                                Text(
+                                    text = "⏳ " + LanguageManager.get("periodic_interval", language).replace("{d}", medicine.intervalDays.toString()),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -256,11 +305,15 @@ fun MedicineManagementCard(
                     }
                 }
 
-                val freqLabel = when (medicine.frequencyType) {
-                    FrequencyType.DAILY.name -> "Daily"
-                    FrequencyType.DAYS_OF_WEEK.name -> medicine.daysOfWeek
-                    FrequencyType.INTERVAL_HOURS.name -> "Every ${medicine.intervalHours}h"
-                    else -> "Daily"
+                val freqLabel = if (!medicine.isRegular) {
+                    "Every ${medicine.intervalDays} days"
+                } else {
+                    when (medicine.frequencyType) {
+                        FrequencyType.DAILY.name -> "Daily"
+                        FrequencyType.DAYS_OF_WEEK.name -> medicine.daysOfWeek
+                        FrequencyType.INTERVAL_HOURS.name -> "Every ${medicine.intervalHours}h"
+                        else -> "Daily"
+                    }
                 }
 
                 Surface(
@@ -299,7 +352,7 @@ fun MedicineManagementCard(
                             tint = if (isLowStock) Color(0xFFDC2626) else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = if (isLowStock) "Low Stock: ${medicine.stockCount} pills remaining!" else "Stock: ${medicine.stockCount} pills remaining",
+                            text = if (isLowStock) "Low Stock: ${medicine.stockCount} $stockUnit remaining!" else "Stock: ${medicine.stockCount} $stockUnit",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = if (isLowStock) FontWeight.Bold else FontWeight.Normal,
                             color = if (isLowStock) Color(0xFFDC2626) else MaterialTheme.colorScheme.onSurfaceVariant
@@ -319,13 +372,13 @@ fun MedicineManagementCard(
                         modifier = Modifier.size(14.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Test Alarm", style = MaterialTheme.typography.labelSmall)
+                    Text(LanguageManager.get("test_alarm", language), style = MaterialTheme.typography.labelSmall)
                 }
             }
 
             if (medicine.instructions.isNotBlank()) {
                 Text(
-                    text = "Instructions: ${medicine.instructions}",
+                    text = "${LanguageManager.get("instructions", language)}: ${medicine.instructions}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

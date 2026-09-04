@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,14 +24,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Medication
 import androidx.compose.material.icons.filled.NightsStay
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Snooze
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.WbSunny
@@ -55,7 +60,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -65,6 +69,11 @@ import com.example.data.DoseRecordEntity
 import com.example.data.MedicineEntity
 import com.example.data.SlotCategory
 import com.example.ui.viewmodel.AdherenceStats
+import com.example.util.AppLanguage
+import com.example.util.LanguageManager
+import com.example.util.MealScheduleManager
+import com.example.util.MealTimes
+import com.example.util.RingingAlarmInfo
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -75,15 +84,19 @@ fun HomeScreen(
     allMedicines: List<MedicineEntity>,
     stats: AdherenceStats,
     selectedSlotFilter: String,
+    language: AppLanguage = AppLanguage.ENGLISH,
+    activeAlarm: RingingAlarmInfo? = null,
+    mealTimes: MealTimes = MealScheduleManager.getCachedMealTimes(),
     onFilterSelect: (String) -> Unit,
     onTake: (DoseRecordEntity) -> Unit,
     onSkip: (DoseRecordEntity) -> Unit,
     onSnooze: (DoseRecordEntity) -> Unit,
     onResetToday: () -> Unit,
-    onAddMedicine: () -> Unit
+    onAddMedicine: () -> Unit,
+    onStopAlarm: () -> Unit = {},
+    onCustomizeMealTimes: () -> Unit = {}
 ) {
     val dateDisplay = SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault()).format(Date())
-
     val medicinesMap = allMedicines.associateBy { it.id }
 
     LazyColumn(
@@ -93,12 +106,33 @@ fun HomeScreen(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // Active Ringing Alarm Banner if device alarm is active
+        if (activeAlarm != null) {
+            item {
+                ActiveAlarmBanner(
+                    alarm = activeAlarm,
+                    language = language,
+                    onStop = onStopAlarm
+                )
+            }
+        }
+
         // Today Summary & Progress Card
         item {
             TodayProgressCard(
                 dateDisplay = dateDisplay,
                 stats = stats,
+                language = language,
                 onResetToday = onResetToday
+            )
+        }
+
+        // Meal Times Summary Card (Breakfast, Lunch, Dinner)
+        item {
+            MealTimesSummaryCard(
+                mealTimes = mealTimes,
+                language = language,
+                onCustomize = onCustomizeMealTimes
             )
         }
 
@@ -106,6 +140,7 @@ fun HomeScreen(
         item {
             SlotFilterRow(
                 selectedFilter = selectedSlotFilter,
+                language = language,
                 onFilterSelect = onFilterSelect
             )
         }
@@ -133,8 +168,8 @@ fun HomeScreen(
                     val medicine = medicinesMap[record.medicineId]
                     DoseCard(
                         record = record,
-                        stockCount = medicine?.stockCount,
-                        lowStockThreshold = medicine?.lowStockThreshold ?: 5,
+                        medicine = medicine,
+                        language = language,
                         onTake = { onTake(record) },
                         onSkip = { onSkip(record) },
                         onSnooze = { onSnooze(record) }
@@ -145,7 +180,10 @@ fun HomeScreen(
 
         if (!anyItemsShown) {
             item {
-                EmptyTodayView(onAddMedicine = onAddMedicine)
+                EmptyTodayView(
+                    language = language,
+                    onAddMedicine = onAddMedicine
+                )
             }
         }
 
@@ -156,9 +194,74 @@ fun HomeScreen(
 }
 
 @Composable
+fun ActiveAlarmBanner(
+    alarm: RingingAlarmInfo,
+    language: AppLanguage,
+    onStop: () -> Unit
+) {
+    ElevatedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("active_alarm_banner"),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    Icons.Default.NotificationsActive,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(32.dp)
+                )
+                Column {
+                    Text(
+                        text = "⏰ " + LanguageManager.get("alarm_active", language),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                    Text(
+                        text = "${alarm.medicineName} • ${alarm.dosage} (${alarm.scheduledTime})",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.85f)
+                    )
+                }
+            }
+
+            Button(
+                onClick = onStop,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Text(
+                    text = LanguageManager.get("stop_alarm", language),
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun TodayProgressCard(
     dateDisplay: String,
     stats: AdherenceStats,
+    language: AppLanguage,
     onResetToday: () -> Unit
 ) {
     ElevatedCard(
@@ -181,7 +284,7 @@ fun TodayProgressCard(
             ) {
                 Column {
                     Text(
-                        text = "Today's Schedule",
+                        text = LanguageManager.get("today_schedule", language),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -212,7 +315,7 @@ fun TodayProgressCard(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "${stats.takenDoses} of ${stats.totalDoses} doses taken",
+                        text = "${stats.takenDoses} / ${stats.totalDoses} " + LanguageManager.get("mark_taken", language),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -241,9 +344,9 @@ fun TodayProgressCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                StatusPill(label = "Taken", count = stats.takenDoses, color = Color(0xFF16A34A))
-                StatusPill(label = "Pending", count = stats.pendingDoses, color = Color(0xFFD97706))
-                StatusPill(label = "Skipped", count = stats.skippedDoses, color = Color(0xFFDC2626))
+                StatusPill(label = LanguageManager.get("taken", language), count = stats.takenDoses, color = Color(0xFF16A34A))
+                StatusPill(label = LanguageManager.get("pending", language), count = stats.pendingDoses, color = Color(0xFFD97706))
+                StatusPill(label = LanguageManager.get("skipped", language), count = stats.skippedDoses, color = Color(0xFFDC2626))
             }
         }
     }
@@ -280,14 +383,15 @@ fun StatusPill(label: String, count: Int, color: Color) {
 @Composable
 fun SlotFilterRow(
     selectedFilter: String,
+    language: AppLanguage,
     onFilterSelect: (String) -> Unit
 ) {
     val filters = listOf(
-        "ALL" to "All Doses",
-        "MORNING" to "Morning 🌅",
-        "AFTERNOON" to "Afternoon ☀️",
-        "EVENING" to "Evening 🌆",
-        "NIGHT" to "Night 🌙"
+        "ALL" to LanguageManager.get("all_doses", language),
+        "MORNING" to "🌅 " + LanguageManager.get("morning", language),
+        "AFTERNOON" to "☀️ " + LanguageManager.get("afternoon", language),
+        "EVENING" to "🌆 " + LanguageManager.get("evening", language),
+        "NIGHT" to "🌙 " + LanguageManager.get("night", language)
     )
 
     LazyRow(
@@ -356,8 +460,8 @@ fun CategoryHeader(category: SlotCategory, count: Int) {
 @Composable
 fun DoseCard(
     record: DoseRecordEntity,
-    stockCount: Int?,
-    lowStockThreshold: Int,
+    medicine: MedicineEntity?,
+    language: AppLanguage,
     onTake: () -> Unit,
     onSkip: () -> Unit,
     onSnooze: () -> Unit
@@ -374,6 +478,14 @@ fun DoseCard(
             else -> MaterialTheme.colorScheme.outlineVariant
         }, label = "border"
     )
+
+    val formIcon = if (medicine?.medicineForm.equals("LIQUID", ignoreCase = true)) "💧" else "💊"
+    val formBadgeText = when (medicine?.medicineForm) {
+        "LIQUID" -> LanguageManager.get("liquid_syrup", language)
+        "DROPS" -> LanguageManager.get("drops", language)
+        "INJECTION" -> LanguageManager.get("injection", language)
+        else -> LanguageManager.get("tablet_capsule", language)
+    }
 
     Card(
         modifier = Modifier
@@ -401,18 +513,57 @@ fun DoseCard(
                 verticalAlignment = Alignment.Top
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = record.medicineName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = record.dosage,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "$formIcon ${record.medicineName}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(top = 2.dp)
+                    ) {
+                        Text(
+                            text = record.dosage,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                        ) {
+                            Text(
+                                text = formBadgeText,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+
+                        if (medicine != null && !medicine.isRegular) {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)
+                            ) {
+                                Text(
+                                    text = "⏳ " + LanguageManager.get("periodic_interval", language).replace("{d}", medicine.intervalDays.toString()),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
                 }
 
                 // Slot Timing Tag
@@ -461,8 +612,9 @@ fun DoseCard(
                 }
 
                 // Stock Counter Pill
-                if (stockCount != null) {
-                    val isLowStock = stockCount <= lowStockThreshold
+                if (medicine != null) {
+                    val isLowStock = medicine.stockCount <= medicine.lowStockThreshold
+                    val unit = if (medicine.medicineForm.equals("LIQUID", ignoreCase = true)) "ml" else "units"
                     Surface(
                         shape = RoundedCornerShape(6.dp),
                         color = if (isLowStock) Color(0xFFFEE2E2) else MaterialTheme.colorScheme.surfaceVariant
@@ -481,7 +633,7 @@ fun DoseCard(
                                 )
                             }
                             Text(
-                                text = if (isLowStock) "Low Stock: $stockCount left" else "Stock: $stockCount left",
+                                text = if (isLowStock) "Low Stock: ${medicine.stockCount} $unit" else "Stock: ${medicine.stockCount} $unit",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = if (isLowStock) Color(0xFFDC2626) else MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = if (isLowStock) FontWeight.Bold else FontWeight.Normal
@@ -511,7 +663,7 @@ fun DoseCard(
                                 modifier = Modifier.size(18.dp)
                             )
                             Text(
-                                text = "Taken ${record.getFormattedActionTime()}",
+                                text = LanguageManager.get("taken", language) + " ${record.getFormattedActionTime()}",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF16A34A)
@@ -530,7 +682,7 @@ fun DoseCard(
                                 modifier = Modifier.size(18.dp)
                             )
                             Text(
-                                text = "Skipped",
+                                text = LanguageManager.get("skipped", language),
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFDC2626)
@@ -549,7 +701,7 @@ fun DoseCard(
                                 modifier = Modifier.size(18.dp)
                             )
                             Text(
-                                text = "Snoozed (10m)",
+                                text = LanguageManager.get("snooze", language) + " (10m)",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFD97706)
@@ -574,7 +726,7 @@ fun DoseCard(
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                             modifier = Modifier.testTag("btn_skip_${record.id}")
                         ) {
-                            Text("Skip", style = MaterialTheme.typography.labelMedium)
+                            Text(LanguageManager.get("skip", language), style = MaterialTheme.typography.labelMedium)
                         }
 
                         OutlinedButton(
@@ -606,10 +758,14 @@ fun DoseCard(
                                 tint = Color.White
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Take", color = Color.White, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = LanguageManager.get("mark_taken", language),
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     } else {
-                        // Option to retake or mark skipped if user tapped mistakenly
                         TextButton(
                             onClick = onSkip,
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
@@ -624,7 +780,10 @@ fun DoseCard(
 }
 
 @Composable
-fun EmptyTodayView(onAddMedicine: () -> Unit) {
+fun EmptyTodayView(
+    language: AppLanguage,
+    onAddMedicine: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -659,8 +818,129 @@ fun EmptyTodayView(onAddMedicine: () -> Unit) {
                 onClick = onAddMedicine,
                 modifier = Modifier.padding(top = 8.dp)
             ) {
-                Text("+ Add Medication")
+                Text("+ " + LanguageManager.get("add_medicine", language))
             }
         }
     }
 }
+
+@Composable
+fun MealTimesSummaryCard(
+    mealTimes: MealTimes,
+    language: AppLanguage,
+    onCustomize: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCustomize() }
+            .testTag("meal_times_summary_card"),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Restaurant,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = LanguageManager.get("meal_schedule_title", language),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                TextButton(
+                    onClick = onCustomize,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = LanguageManager.get("customize_meal_times_btn", language),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            // Badges row: Breakfast, Lunch, Dinner
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                MealBadge(
+                    label = LanguageManager.get("meal_breakfast", language),
+                    time = mealTimes.breakfast,
+                    modifier = Modifier.weight(1f)
+                )
+                MealBadge(
+                    label = LanguageManager.get("meal_lunch", language),
+                    time = mealTimes.lunch,
+                    modifier = Modifier.weight(1f)
+                )
+                MealBadge(
+                    label = LanguageManager.get("meal_dinner", language),
+                    time = mealTimes.dinner,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MealBadge(
+    label: String,
+    time: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surface,
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 6.dp, horizontal = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = time,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 13.sp
+            )
+        }
+    }
+}
+

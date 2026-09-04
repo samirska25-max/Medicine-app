@@ -1,5 +1,6 @@
 package com.example.receiver
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -21,12 +22,15 @@ import com.example.receiver.MedicineAlarmScheduler.ACTION_SNOOZE
 import com.example.receiver.MedicineAlarmScheduler.ACTION_TRIGGER_ALARM
 import com.example.receiver.MedicineAlarmScheduler.EXTRA_DOSAGE
 import com.example.receiver.MedicineAlarmScheduler.EXTRA_INSTRUCTIONS
+import com.example.receiver.MedicineAlarmScheduler.EXTRA_MEDICINE_FORM
 import com.example.receiver.MedicineAlarmScheduler.EXTRA_MEDICINE_ID
 import com.example.receiver.MedicineAlarmScheduler.EXTRA_MEDICINE_NAME
 import com.example.receiver.MedicineAlarmScheduler.EXTRA_NOTIFICATION_ID
 import com.example.receiver.MedicineAlarmScheduler.EXTRA_RECORD_ID
 import com.example.receiver.MedicineAlarmScheduler.EXTRA_SCHEDULED_TIME
 import com.example.receiver.MedicineAlarmScheduler.EXTRA_SLOT_NAME
+import com.example.util.AlarmRingingManager
+import com.example.util.RingingAlarmInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -50,6 +54,7 @@ class AlarmReceiver : BroadcastReceiver() {
         val medicineId = intent.getLongExtra(EXTRA_MEDICINE_ID, -1L)
         val medicineName = intent.getStringExtra(EXTRA_MEDICINE_NAME) ?: "Medication"
         val dosage = intent.getStringExtra(EXTRA_DOSAGE) ?: ""
+        val medicineForm = intent.getStringExtra(EXTRA_MEDICINE_FORM) ?: "TABLET"
         val slotName = intent.getStringExtra(EXTRA_SLOT_NAME) ?: "Scheduled Dose"
         val scheduledTime = intent.getStringExtra(EXTRA_SCHEDULED_TIME) ?: ""
         val instructions = intent.getStringExtra(EXTRA_INSTRUCTIONS) ?: ""
@@ -58,11 +63,28 @@ class AlarmReceiver : BroadcastReceiver() {
 
         when (action) {
             ACTION_TRIGGER_ALARM -> {
+                // Start loud device alarm ringing
+                AlarmRingingManager.startRinging(
+                    context = context,
+                    info = RingingAlarmInfo(
+                        medicineId = medicineId,
+                        medicineName = medicineName,
+                        dosage = dosage,
+                        slotName = slotName,
+                        scheduledTime = scheduledTime,
+                        instructions = instructions,
+                        recordId = recordId,
+                        notificationId = notificationId,
+                        medicineForm = medicineForm
+                    )
+                )
+
                 showAlarmNotification(
                     context = context,
                     medicineId = medicineId,
                     medicineName = medicineName,
                     dosage = dosage,
+                    medicineForm = medicineForm,
                     slotName = slotName,
                     scheduledTime = scheduledTime,
                     instructions = instructions,
@@ -73,15 +95,25 @@ class AlarmReceiver : BroadcastReceiver() {
 
             ACTION_MARK_TAKEN -> {
                 val pendingResult = goAsync()
+                AlarmRingingManager.stopRinging(context)
                 dismissNotification(context, notificationId)
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
                         val db = AppDatabase.getDatabase(context)
                         val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
 
-                        // Decrement medicine stock count
+                        // Decrement medicine stock count and handle periodic rescheduling
                         if (medicineId > 0) {
                             db.medicineDao().decrementStock(medicineId)
+                            val medicine = db.medicineDao().getMedicineById(medicineId)
+                            if (medicine != null && !medicine.isRegular) {
+                                val nextDue = medicine.computeNextDueDate()
+                                db.medicineDao().updateNextDueDate(medicineId, nextDue)
+                                MedicineAlarmScheduler.scheduleMedicineAlarm(
+                                    context = context,
+                                    medicine = medicine.copy(nextDueDate = nextDue)
+                                )
+                            }
                         }
 
                         // Update or insert dose record
@@ -119,6 +151,7 @@ class AlarmReceiver : BroadcastReceiver() {
 
             ACTION_SNOOZE -> {
                 val pendingResult = goAsync()
+                AlarmRingingManager.stopRinging(context)
                 dismissNotification(context, notificationId)
                 MedicineAlarmScheduler.scheduleSnooze(
                     context = context,
@@ -145,6 +178,7 @@ class AlarmReceiver : BroadcastReceiver() {
             }
 
             ACTION_DISMISS -> {
+                AlarmRingingManager.stopRinging(context)
                 dismissNotification(context, notificationId)
             }
         }
@@ -155,6 +189,7 @@ class AlarmReceiver : BroadcastReceiver() {
         medicineId: Long,
         medicineName: String,
         dosage: String,
+        medicineForm: String,
         slotName: String,
         scheduledTime: String,
         instructions: String,
@@ -176,12 +211,21 @@ class AlarmReceiver : BroadcastReceiver() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // Full screen intent for wake up & alarm dialog
+        val fullScreenPendingIntent = PendingIntent.getActivity(
+            context,
+            notificationId + 99,
+            openAppIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         // Action: Mark Taken
         val markTakenIntent = Intent(context, AlarmReceiver::class.java).apply {
             action = ACTION_MARK_TAKEN
             putExtra(EXTRA_MEDICINE_ID, medicineId)
             putExtra(EXTRA_MEDICINE_NAME, medicineName)
             putExtra(EXTRA_DOSAGE, dosage)
+            putExtra(EXTRA_MEDICINE_FORM, medicineForm)
             putExtra(EXTRA_SLOT_NAME, slotName)
             putExtra(EXTRA_SCHEDULED_TIME, scheduledTime)
             putExtra(EXTRA_INSTRUCTIONS, instructions)
@@ -201,6 +245,7 @@ class AlarmReceiver : BroadcastReceiver() {
             putExtra(EXTRA_MEDICINE_ID, medicineId)
             putExtra(EXTRA_MEDICINE_NAME, medicineName)
             putExtra(EXTRA_DOSAGE, dosage)
+            putExtra(EXTRA_MEDICINE_FORM, medicineForm)
             putExtra(EXTRA_SLOT_NAME, slotName)
             putExtra(EXTRA_SCHEDULED_TIME, scheduledTime)
             putExtra(EXTRA_INSTRUCTIONS, instructions)
@@ -214,11 +259,24 @@ class AlarmReceiver : BroadcastReceiver() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // Action: Stop Alarm
+        val dismissIntent = Intent(context, AlarmReceiver::class.java).apply {
+            action = ACTION_DISMISS
+            putExtra(EXTRA_NOTIFICATION_ID, notificationId)
+        }
+        val dismissPendingIntent = PendingIntent.getBroadcast(
+            context,
+            notificationId + 3,
+            dismissIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
 
+        val formIcon = if (medicineForm.equals("LIQUID", ignoreCase = true)) "💧" else "💊"
         val contentText = buildString {
-            append("Scheduled: $slotName")
+            append("$formIcon $slotName")
             if (scheduledTime.isNotBlank()) append(" ($scheduledTime)")
             if (dosage.isNotBlank()) append(" • $dosage")
             if (instructions.isNotBlank()) append(" • $instructions")
@@ -226,19 +284,24 @@ class AlarmReceiver : BroadcastReceiver() {
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-            .setContentTitle("💊 Time for $medicineName")
+            .setContentTitle("⏰ Medicine Alarm: $medicineName")
             .setContentText(contentText)
             .setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setSound(alarmSound)
-            .setVibrate(longArrayOf(0, 600, 300, 600, 300, 600))
+            .setVibrate(longArrayOf(0, 800, 400, 800, 400, 800))
+            .setOngoing(true)
+            .setFullScreenIntent(fullScreenPendingIntent, true)
             .setAutoCancel(true)
             .setContentIntent(openAppPendingIntent)
-            .addAction(android.R.drawable.checkbox_on_background, "✓ Mark Taken", markTakenPendingIntent)
+            .addAction(android.R.drawable.checkbox_on_background, "✓ Take", markTakenPendingIntent)
             .addAction(android.R.drawable.ic_popup_sync, "⏰ Snooze (10m)", snoozePendingIntent)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "⏹ Stop Alarm", dismissPendingIntent)
             .build()
+
+        notification.flags = notification.flags or Notification.FLAG_INSISTENT
 
         notificationManager.notify(notificationId, notification)
     }

@@ -63,29 +63,50 @@ enum class DoseStatus(val displayName: String) {
     SNOOZED("Snoozed")
 }
 
+enum class MedicineForm(val title: String, val defaultUnit: String) {
+    TABLET("Tablet / Capsule", "tablet"),
+    LIQUID("Liquid / Syrup", "ml"),
+    DROPS("Drops", "drops"),
+    INJECTION("Injection", "units"),
+    OTHER("Other", "dose");
+
+    companion object {
+        fun fromName(name: String): MedicineForm {
+            return entries.firstOrNull { it.name.equals(name, ignoreCase = true) } ?: TABLET
+        }
+    }
+}
+
 @Entity(tableName = "medicines")
 data class MedicineEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val name: String,
-    val dosage: String, // e.g. "Paracetamol 500mg" or "500mg"
+    val dosage: String, // e.g. "1 Tablet", "1/2 Tablet", "5 ml", "10 ml"
+    val medicineForm: String = MedicineForm.TABLET.name, // TABLET, LIQUID, DROPS, INJECTION, OTHER
+    val dosagePreset: String = "1 (Full)", // "Quarter", "Half", "Full", "5 ml", etc.
     val timingSlot: String = TimingSlot.AFTER_BREAKFAST.name,
     val customTime: String = "08:30", // "HH:mm"
     val frequencyType: String = FrequencyType.DAILY.name,
     val daysOfWeek: String = "MON,TUE,WED,THU,FRI,SAT,SUN", // comma separated
     val intervalHours: Int = 8,
-    val stockCount: Int = 30, // Pill counter
+    val isRegular: Boolean = true, // true = daily/weekly; false = every X days (7, 10, 15 days)
+    val intervalDays: Int = 1, // number of days between doses if not regular
+    val startDate: String = "", // "yyyy-MM-dd"
+    val nextDueDate: String = "", // "yyyy-MM-dd"
+    val stockCount: Int = 30, // Pill / ml counter
     val lowStockThreshold: Int = 5,
     val instructions: String = "",
     val isActive: Boolean = true,
     val createdAt: Long = System.currentTimeMillis()
 ) {
-    fun getResolvedTime(): String {
+    fun getResolvedTime(customMealTimes: com.example.util.MealTimes? = null): String {
         val slot = TimingSlot.entries.firstOrNull { it.name == timingSlot }
         return if (slot == null || slot == TimingSlot.CUSTOM) {
             customTime.ifBlank { "08:30" }
         } else {
-            slot.defaultTime
+            val mt = customMealTimes ?: com.example.util.MealScheduleManager.getCachedMealTimes()
+            mt.getTimeForSlot(slot)
         }
     }
 
@@ -94,10 +115,11 @@ data class MedicineEntity(
         return slot?.title ?: "Custom ($customTime)"
     }
 
-    fun getResolvedCategory(): SlotCategory {
+    fun getResolvedCategory(customMealTimes: com.example.util.MealTimes? = null): SlotCategory {
         val slot = TimingSlot.entries.firstOrNull { it.name == timingSlot }
         return if (slot != null && slot != TimingSlot.CUSTOM) {
-            slot.category
+            val time = getResolvedTime(customMealTimes)
+            SlotCategory.fromTime(time)
         } else {
             SlotCategory.fromTime(customTime)
         }
@@ -105,6 +127,25 @@ data class MedicineEntity(
 
     fun isDueOnDate(calendar: Calendar): Boolean {
         if (!isActive) return false
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val targetDateStr = sdf.format(calendar.time)
+
+        if (!isRegular) {
+            if (nextDueDate.isNotBlank()) {
+                return nextDueDate == targetDateStr
+            }
+            if (startDate.isNotBlank()) {
+                return try {
+                    val start = sdf.parse(startDate) ?: return false
+                    val diffDays = ((calendar.time.time - start.time) / (1000 * 60 * 60 * 24)).toInt()
+                    diffDays >= 0 && (intervalDays <= 1 || diffDays % intervalDays == 0)
+                } catch (e: Exception) {
+                    false
+                }
+            }
+            return true
+        }
+
         return when (frequencyType) {
             FrequencyType.DAILY.name -> true
             FrequencyType.DAYS_OF_WEEK.name -> {
@@ -123,6 +164,15 @@ data class MedicineEntity(
             FrequencyType.INTERVAL_HOURS.name -> true
             else -> true
         }
+    }
+
+    fun computeNextDueDate(fromCalendar: Calendar = Calendar.getInstance()): String {
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val cal = Calendar.getInstance().apply {
+            time = fromCalendar.time
+            add(Calendar.DAY_OF_YEAR, if (intervalDays > 0) intervalDays else 1)
+        }
+        return sdf.format(cal.time)
     }
 }
 

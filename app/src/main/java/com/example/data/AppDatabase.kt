@@ -15,7 +15,7 @@ import java.util.Locale
 
 @Database(
     entities = [MedicineEntity::class, DoseRecordEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -55,43 +55,60 @@ abstract class AppDatabase : RoomDatabase() {
             suspend fun populateInitialData(dao: MedicineDao) {
                 val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
 
+                // 1. Tablet with half dose
                 val med1 = MedicineEntity(
                     name = "Paracetamol 500mg",
-                    dosage = "1 Tablet",
+                    dosage = "1/2 Tablet",
+                    medicineForm = MedicineForm.TABLET.name,
+                    dosagePreset = "1/2 (Half)",
                     timingSlot = TimingSlot.AFTER_BREAKFAST.name,
                     customTime = "08:30",
                     frequencyType = FrequencyType.DAILY.name,
                     daysOfWeek = "MON,TUE,WED,THU,FRI,SAT,SUN",
                     intervalHours = 8,
+                    isRegular = true,
+                    intervalDays = 1,
                     stockCount = 28,
                     lowStockThreshold = 5,
-                    instructions = "Take with a glass of water after food"
+                    instructions = "Take with warm water after breakfast"
                 )
 
+                // 2. Liquid / Syrup with 10 ml dose
                 val med2 = MedicineEntity(
-                    name = "Amoxicillin 250mg",
-                    dosage = "1 Capsule",
+                    name = "Cough Relief Syrup",
+                    dosage = "10 ml",
+                    medicineForm = MedicineForm.LIQUID.name,
+                    dosagePreset = "10 ml (2 tsp)",
                     timingSlot = TimingSlot.AFTER_LUNCH.name,
                     customTime = "13:30",
                     frequencyType = FrequencyType.DAILY.name,
                     daysOfWeek = "MON,TUE,WED,THU,FRI,SAT,SUN",
                     intervalHours = 8,
-                    stockCount = 14,
-                    lowStockThreshold = 4,
-                    instructions = "Complete full antibiotic course"
+                    isRegular = true,
+                    intervalDays = 1,
+                    stockCount = 100,
+                    lowStockThreshold = 20,
+                    instructions = "Shake bottle well before pouring 10 ml"
                 )
 
+                // 3. Periodic Medicine (Every 7 days / weekly)
                 val med3 = MedicineEntity(
-                    name = "Atorvastatin 20mg",
-                    dosage = "1 Tablet",
+                    name = "Vitamin D3 60,000 IU",
+                    dosage = "1 Capsule",
+                    medicineForm = MedicineForm.TABLET.name,
+                    dosagePreset = "1 (Full)",
                     timingSlot = TimingSlot.BEDTIME.name,
                     customTime = "22:00",
                     frequencyType = FrequencyType.DAILY.name,
                     daysOfWeek = "MON,TUE,WED,THU,FRI,SAT,SUN",
                     intervalHours = 24,
+                    isRegular = false,
+                    intervalDays = 7, // Every 7 days!
+                    startDate = todayStr,
+                    nextDueDate = todayStr,
                     stockCount = 4, // low stock test
-                    lowStockThreshold = 5,
-                    instructions = "Take at bedtime consistently"
+                    lowStockThreshold = 2,
+                    instructions = "Take once every 7 days with milk at bedtime"
                 )
 
                 val id1 = dao.insertMedicine(med1)

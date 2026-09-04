@@ -44,6 +44,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.data.DoseRecordEntity
 import com.example.ui.viewmodel.AdherenceStats
+import com.example.util.AppLanguage
+import com.example.util.LanguageManager
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -52,6 +54,7 @@ fun HistoryScreen(
     historyRecords: List<DoseRecordEntity>,
     stats: AdherenceStats,
     selectedRangeDays: Int,
+    language: AppLanguage = AppLanguage.ENGLISH,
     onRangeSelect: (Int) -> Unit
 ) {
     // Group records by scheduledDate

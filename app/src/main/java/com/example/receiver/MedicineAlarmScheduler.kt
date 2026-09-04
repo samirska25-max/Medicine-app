@@ -11,7 +11,9 @@ import com.example.data.MedicineEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Locale
 
 object MedicineAlarmScheduler {
     private const val TAG = "MedAlarmScheduler"
@@ -24,6 +26,7 @@ object MedicineAlarmScheduler {
     const val EXTRA_MEDICINE_ID = "extra_medicine_id"
     const val EXTRA_MEDICINE_NAME = "extra_medicine_name"
     const val EXTRA_DOSAGE = "extra_dosage"
+    const val EXTRA_MEDICINE_FORM = "extra_medicine_form"
     const val EXTRA_SLOT_NAME = "extra_slot_name"
     const val EXTRA_SCHEDULED_TIME = "extra_scheduled_time"
     const val EXTRA_INSTRUCTIONS = "extra_instructions"
@@ -42,13 +45,18 @@ object MedicineAlarmScheduler {
     ) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
 
-        val triggerMillis = calculateTriggerMillis(timeStr)
+        val triggerMillis = if (!medicine.isRegular && medicine.nextDueDate.isNotBlank()) {
+            calculateTargetDateMillis(timeStr, medicine.nextDueDate)
+        } else {
+            calculateTriggerMillis(timeStr)
+        }
 
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             action = ACTION_TRIGGER_ALARM
             putExtra(EXTRA_MEDICINE_ID, medicine.id)
             putExtra(EXTRA_MEDICINE_NAME, medicine.name)
             putExtra(EXTRA_DOSAGE, medicine.dosage)
+            putExtra(EXTRA_MEDICINE_FORM, medicine.medicineForm)
             putExtra(EXTRA_SLOT_NAME, slotName)
             putExtra(EXTRA_SCHEDULED_TIME, timeStr)
             putExtra(EXTRA_INSTRUCTIONS, medicine.instructions)
@@ -122,6 +130,7 @@ object MedicineAlarmScheduler {
             putExtra(EXTRA_MEDICINE_ID, medicine.id)
             putExtra(EXTRA_MEDICINE_NAME, medicine.name)
             putExtra(EXTRA_DOSAGE, medicine.dosage)
+            putExtra(EXTRA_MEDICINE_FORM, medicine.medicineForm)
             putExtra(EXTRA_SLOT_NAME, medicine.getResolvedSlotTitle())
             putExtra(EXTRA_SCHEDULED_TIME, medicine.getResolvedTime())
             putExtra(EXTRA_INSTRUCTIONS, medicine.instructions)
@@ -232,6 +241,34 @@ object MedicineAlarmScheduler {
         }
 
         // If time already passed today, schedule for tomorrow
+        if (calendar.timeInMillis <= System.currentTimeMillis()) {
+            calendar.add(Calendar.DAY_OF_YEAR, 1)
+        }
+
+        return calendar.timeInMillis
+    }
+
+    private fun calculateTargetDateMillis(timeStr: String, targetDateStr: String): Long {
+        val parts = timeStr.split(":")
+        val hour = parts.getOrNull(0)?.toIntOrNull() ?: 8
+        val minute = parts.getOrNull(1)?.toIntOrNull() ?: 30
+
+        val calendar = Calendar.getInstance()
+        try {
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val date = sdf.parse(targetDateStr)
+            if (date != null) {
+                calendar.time = date
+            }
+        } catch (e: Exception) {
+            // fallback to current
+        }
+        calendar.set(Calendar.HOUR_OF_DAY, hour)
+        calendar.set(Calendar.MINUTE, minute)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+
+        // If time already passed, schedule for next interval
         if (calendar.timeInMillis <= System.currentTimeMillis()) {
             calendar.add(Calendar.DAY_OF_YEAR, 1)
         }

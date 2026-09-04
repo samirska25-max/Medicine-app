@@ -41,6 +41,9 @@ interface MedicineDao {
     @Query("UPDATE medicines SET stockCount = CASE WHEN stockCount > 0 THEN stockCount - 1 ELSE 0 END WHERE id = :medicineId")
     suspend fun decrementStock(medicineId: Long)
 
+    @Query("UPDATE medicines SET nextDueDate = :nextDueDate WHERE id = :medicineId")
+    suspend fun updateNextDueDate(medicineId: Long, nextDueDate: String)
+
     // Dose Records for Today & Date Range
     @Query("SELECT * FROM dose_records WHERE scheduledDate = :date ORDER BY scheduledTime ASC")
     fun getRecordsForDate(date: String): Flow<List<DoseRecordEntity>>
@@ -74,4 +77,7 @@ interface MedicineDao {
 
     @Query("DELETE FROM dose_records WHERE scheduledDate = :date")
     suspend fun resetRecordsForDate(date: String)
+
+    @Query("UPDATE dose_records SET scheduledTime = :time, slotCategory = :category WHERE id = :id")
+    suspend fun updateRecordTimeAndCategory(id: Long, time: String, category: String)
 }
