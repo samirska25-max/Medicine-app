@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/app/src/main/assets/med_reminder.html" }
+  ]
+}
