@@ -172,13 +172,16 @@ fun AddEditMedicineDialog(
 
     // Regular vs Periodic
     var isRegular by remember { mutableStateOf(initialMedicine?.isRegular ?: true) }
-    var intervalDays by remember { mutableIntStateOf(initialMedicine?.intervalDays ?: 7) }
+    var intervalDays by remember { mutableIntStateOf(initialMedicine?.intervalDays ?: 2) }
     var customIntervalText by remember {
         mutableStateOf(
-            if ((initialMedicine?.intervalDays ?: 7) !in listOf(7, 10, 14, 15, 30)) {
-                (initialMedicine?.intervalDays ?: 7).toString()
+            if ((initialMedicine?.intervalDays ?: 2) !in listOf(2, 3, 5, 7, 10, 14, 15, 30)) {
+                (initialMedicine?.intervalDays ?: 2).toString()
             } else ""
         )
+    }
+    var periodicStartToday by remember {
+        mutableStateOf(initialMedicine?.nextDueDate == todayDateStr)
     }
 
     // Timing Slot
@@ -634,7 +637,7 @@ fun AddEditMedicineDialog(
                     )
                 }
 
-                // If Periodic (Every 7, 10, 15 days, etc.)
+                // If Periodic (Every 2, 3, 7, 15 days, etc.)
                 if (!isRegular) {
                     Surface(
                         color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f),
@@ -652,7 +655,7 @@ fun AddEditMedicineDialog(
                                 color = MaterialTheme.colorScheme.onTertiaryContainer
                             )
 
-                            val periodicIntervals = listOf(7, 10, 14, 15, 30)
+                            val periodicIntervals = listOf(2, 3, 5, 7, 10, 14, 15, 30)
                             FlowRow(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -683,22 +686,86 @@ fun AddEditMedicineDialog(
                                     it.toIntOrNull()?.let { d -> if (d > 0) intervalDays = d }
                                 },
                                 label = { Text(LanguageManager.get("custom_days", language)) },
-                                placeholder = { Text("e.g. 21 or 45") },
+                                placeholder = { Text("e.g. 2, 3, 7, 15, 21, 45") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
                                 modifier = Modifier.fillMaxWidth()
                             )
 
-                            val cal = Calendar.getInstance().apply {
-                                add(Calendar.DAY_OF_YEAR, intervalDays)
-                            }
-                            val nextDueDateStr = SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(cal.time)
+                            // First dose timing selection
                             Text(
-                                text = "Next dose will trigger on: $nextDueDateStr (in $intervalDays days)",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Medium,
+                                text = LanguageManager.get("first_dose_start", language),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onTertiaryContainer
                             )
+
+                            val calTarget = Calendar.getInstance().apply {
+                                add(Calendar.DAY_OF_YEAR, intervalDays)
+                            }
+                            val targetDateFormatted = SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(calTarget.time)
+                            val todayFormatted = SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date())
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                FilterChip(
+                                    selected = !periodicStartToday,
+                                    onClick = { periodicStartToday = false },
+                                    label = {
+                                        Text(
+                                            LanguageManager.get("start_after_interval", language)
+                                                .replace("{d}", intervalDays.toString())
+                                                .replace("{date}", targetDateFormatted),
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                FilterChip(
+                                    selected = periodicStartToday,
+                                    onClick = { periodicStartToday = true },
+                                    label = {
+                                        Text(
+                                            LanguageManager.get("start_today", language)
+                                                .replace("{d}", intervalDays.toString()),
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+
+                            // Simultaneous alarm banner
+                            val scheduledTimeStr = if (selectedSlot == TimingSlot.CUSTOM) customTime else mealTimes.getTimeForSlot(selectedSlot)
+                            val scheduledDateDisplay = if (periodicStartToday) todayFormatted else targetDateFormatted
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Alarm,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.tertiary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Text(
+                                        text = "🔔 " + LanguageManager.get("simultaneous_alarm_set", language)
+                                            .replace("{time}", MealTimes.formatTo12Hour(scheduledTimeStr))
+                                            .replace("{date}", scheduledDateDisplay),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -759,7 +826,7 @@ fun AddEditMedicineDialog(
                                 ) {
                                     Icon(Icons.Default.Alarm, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                                     Text(
-                                        text = "Alarm Time (12-Hour Clock)",
+                                        text = LanguageManager.get("alarm_time_12h", language),
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold
                                     )
@@ -789,7 +856,7 @@ fun AddEditMedicineDialog(
                                         customIsPm = false
                                         updateCustomTime(customHour12, customMinute, false)
                                     },
-                                    label = { Text("☀️ AM (Morning)", fontWeight = FontWeight.Bold) },
+                                    label = { Text(LanguageManager.get("am_morning", language), fontWeight = FontWeight.Bold) },
                                     modifier = Modifier.weight(1f)
                                 )
                                 FilterChip(
@@ -798,14 +865,14 @@ fun AddEditMedicineDialog(
                                         customIsPm = true
                                         updateCustomTime(customHour12, customMinute, true)
                                     },
-                                    label = { Text("🌙 PM (Afternoon/Night)", fontWeight = FontWeight.Bold) },
+                                    label = { Text(LanguageManager.get("pm_afternoon_night", language), fontWeight = FontWeight.Bold) },
                                     modifier = Modifier.weight(1f)
                                 )
                             }
 
                             // Hour Selection (1 to 12)
                             Text(
-                                text = "Hour:",
+                                text = LanguageManager.get("hour_label", language),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -828,7 +895,7 @@ fun AddEditMedicineDialog(
 
                             // Minute Selection
                             Text(
-                                text = "Minutes:",
+                                text = LanguageManager.get("minutes_label", language),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -852,7 +919,7 @@ fun AddEditMedicineDialog(
 
                             // Quick 12-Hour Presets
                             Text(
-                                text = "Quick 12-Hour Presets:",
+                                text = LanguageManager.get("quick_presets_12h", language),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -1122,7 +1189,16 @@ fun AddEditMedicineDialog(
                         intervalDays = if (!isRegular) intervalDays else 1,
                         startDate = initialMedicine?.startDate?.ifBlank { todayDateStr } ?: todayDateStr,
                         nextDueDate = if (!isRegular) {
-                            initialMedicine?.nextDueDate?.ifBlank { todayDateStr } ?: todayDateStr
+                            if (initialMedicine != null && initialMedicine.nextDueDate.isNotBlank() && initialMedicine.intervalDays == intervalDays) {
+                                initialMedicine.nextDueDate
+                            } else {
+                                if (periodicStartToday) {
+                                    todayDateStr
+                                } else {
+                                    val c = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, intervalDays) }
+                                    SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(c.time)
+                                }
+                            }
                         } else "",
                         stockCount = stockInt,
                         lowStockThreshold = lowStockInt,

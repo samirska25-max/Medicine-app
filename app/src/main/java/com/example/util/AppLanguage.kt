@@ -122,7 +122,7 @@ object LanguageManager {
 
     fun getSavedLanguage(context: Context): AppLanguage {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val code = prefs.getString(KEY_LANG, AppLanguage.ENGLISH.code) ?: AppLanguage.ENGLISH.code
+        val code = prefs.getString(KEY_LANG, AppLanguage.HINDI.code) ?: AppLanguage.HINDI.code
         return AppLanguage.fromCode(code)
     }
 
@@ -390,9 +390,221 @@ object LanguageManager {
                 AppLanguage.PUNJABI -> "ਦਵਾਈ ਦਾ ਲੇਬਲ ਸਕੈਨ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ..."
                 else -> "Scanning medicine label photo..."
             }
+            "schedule_type" -> when (lang) {
+                AppLanguage.HINDI -> "दवा का प्रकार (नियमित या आवधिक)"
+                AppLanguage.BENGALI -> "সময়সূচীর ধরণ (নিয়মিত বা নির্দিষ্ট দিন পর)"
+                AppLanguage.TELUGU -> "షెడ్యూల్ రకం (రోజూ లేదా కొన్ని రోజులకు)"
+                AppLanguage.MARATHI -> "औषधाचा प्रकार (नियमित किंवा ठराविक दिवसांनी)"
+                AppLanguage.TAMIL -> "அட்டவணை வகை (வழக்கமான அல்லது இடைவெளி)"
+                AppLanguage.GUJARATI -> "શેડ્યૂલ પ્રકાર (નિયમિત કે અમુક દિવસો પછી)"
+                AppLanguage.KANNADA -> "ವೇಳಾಪಟ್ಟಿ ಪ್ರಕಾರ (ನಿಯಮಿತ ಅಥವಾ ನಿರ್ದಿಷ್ಟ ದಿನಗಳ ನಂತರ)"
+                AppLanguage.MALAYALAM -> "ഷെഡ്യൂൾ തരം (പതിവ് അല്ലെങ്കിൽ ഇടവിട്ടുള്ളത്)"
+                AppLanguage.PUNJABI -> "ਸ਼ਡਿਊਲ ਕਿਸਮ (ਰੋਜ਼ਾਨਾ ਜਾਂ ਕੁਝ ਦਿਨਾਂ ਬਾਅਦ)"
+                else -> "Schedule Type"
+            }
+            "regular_medicine" -> when (lang) {
+                AppLanguage.HINDI -> "नियमित (रोजाना / साप्ताहिक)"
+                AppLanguage.BENGALI -> "নিয়মিত (দৈনিক / নির্দিষ্ট বারে)"
+                AppLanguage.TELUGU -> "క్రమం తప్పకుండా (రోజూ / వారానికి)"
+                AppLanguage.MARATHI -> "नियमित (दररोज / ठराविक वारी)"
+                AppLanguage.TAMIL -> "வழக்கமான (தினசரி / வாரம்)"
+                AppLanguage.GUJARATI -> "નિયમિત (રોજ / અઠવાડિયે)"
+                AppLanguage.KANNADA -> "ನಿಯಮಿತ (ಪ್ರತಿದಿನ / ವಾರಕ್ಕೊಮ್ಮೆ)"
+                AppLanguage.MALAYALAM -> "പതിവായി (ദിവസവും / ആഴ്ചയിൽ)"
+                AppLanguage.PUNJABI -> "ਰੋਜ਼ਾਨਾ (ਹਰ ਰੋਜ਼ / ਹਫ਼ਤਾਵਾਰੀ)"
+                else -> "Regular (Daily / Weekly)"
+            }
+            "periodic_medicine" -> when (lang) {
+                AppLanguage.HINDI -> "आवधिक (कुछ दिनों के अंतर पर)"
+                AppLanguage.BENGALI -> "নির্দিষ্ট দিন পর পর (যেমন ২, ৩, ৭, ১৫ দিন)"
+                AppLanguage.TELUGU -> "నిర్దిష్ట రోజుల విరామం (ఉదా: 2, 3, 7, 15 రోజులు)"
+                AppLanguage.MARATHI -> "ठराविक दिवसांनी (उदा. २, ३, ७, १५ दिवसांनी)"
+                AppLanguage.TAMIL -> "குறிப்பிட்ட நாட்களுக்கு ஒருமுறை (2, 3, 7, 15 நாட்கள்)"
+                AppLanguage.GUJARATI -> "અમુક દિવસો પછી (દા.ત. 2, 3, 7, 15 દિવસ)"
+                AppLanguage.KANNADA -> "ಕೆಲವು ದಿನಗಳ ನಂತರ (ಉದಾ: 2, 3, 7, 15 ದಿನಗಳು)"
+                AppLanguage.MALAYALAM -> "നിശ്ചിത ദിവസങ്ങൾക്ക് ശേഷം (2, 3, 7, 15 ദിവസങ്ങൾ)"
+                AppLanguage.PUNJABI -> "ਕੁਝ ਦਿਨਾਂ ਬਾਅਦ (ਜਿਵੇਂ 2, 3, 7, 15 ਦਿਨ)"
+                else -> "Periodic (Gap of days)"
+            }
+            "dose_interval_label" -> when (lang) {
+                AppLanguage.HINDI -> "दवा कितने दिनों बाद लेनी है (अंतराल):"
+                AppLanguage.BENGALI -> "কত দিন পর পর ওষুধটি খাবেন (ব্যবধান):"
+                AppLanguage.TELUGU -> "మందు ఎన్ని రోజుల తర్వాత తీసుకోవాలి (వ్యవధి):"
+                AppLanguage.MARATHI -> "औषध किती दिवसांच्या अंतराने घ्यायचे आहे:"
+                AppLanguage.TAMIL -> "எத்தனை நாட்களுக்குப் பிறகு மருந்து உட்கொள்ள வேண்டும்:"
+                AppLanguage.GUJARATI -> "દવા કેટલા દિવસ પછી લેવાની છે (અંતરાલ):"
+                AppLanguage.KANNADA -> "ಔಷಧಿಯನ್ನು ಎಷ್ಟು ದಿನಗಳ ನಂತರ ತೆಗೆದುಕೊಳ್ಳಬೇಕು:"
+                AppLanguage.MALAYALAM -> "എത്ര ദിവസങ്ങൾക്ക് ശേഷം മരുന്ന് കഴിക്കണം:"
+                AppLanguage.PUNJABI -> "ਦਵਾਈ ਕਿੰਨੇ ਦਿਨਾਂ ਬਾਅਦ ਲੈਣੀ ਹੈ (ਵਕਫ਼ਾ):"
+                else -> "Take medicine after how many days (interval):"
+            }
+            "days" -> when (lang) {
+                AppLanguage.HINDI -> "दिन"
+                AppLanguage.BENGALI -> "দিন"
+                AppLanguage.TELUGU -> "రోజులు"
+                AppLanguage.MARATHI -> "दिवस"
+                AppLanguage.TAMIL -> "நாட்கள்"
+                AppLanguage.GUJARATI -> "દિવસ"
+                AppLanguage.KANNADA -> "ದಿನಗಳು"
+                AppLanguage.MALAYALAM -> "ദിവസങ്ങൾ"
+                AppLanguage.PUNJABI -> "ਦਿਨ"
+                else -> "days"
+            }
             "custom_days" -> when (lang) {
-                AppLanguage.HINDI -> "कस्टम दिन दर्ज करें"
-                else -> "Custom Days"
+                AppLanguage.HINDI -> "कस्टम दिन (जैसे 2, 3, 15, आदि)"
+                AppLanguage.BENGALI -> "কাস্টম দিন (যেমন ২, ৩, ১৫, ইত্যাদি)"
+                AppLanguage.TELUGU -> "కస్టమ్ రోజులు (ఉదా: 2, 3, 15)"
+                AppLanguage.MARATHI -> "इतर दिवस (उदा. २, ३, १५, इ.)"
+                AppLanguage.TAMIL -> "தனிப்பயன் நாட்கள் (2, 3, 15 போன்றவை)"
+                AppLanguage.GUJARATI -> "કસ્ટમ દિવસો (દા.ત. 2, 3, 15)"
+                AppLanguage.KANNADA -> "ಕಸ್ಟಮ್ ದಿನಗಳು (ಉದಾ: 2, 3, 15)"
+                AppLanguage.MALAYALAM -> "മറ്റു ദിവസങ്ങൾ (2, 3, 15 തുടങ്ങിയവ)"
+                AppLanguage.PUNJABI -> "ਹੋਰ ਦਿਨ (ਜਿਵੇਂ 2, 3, 15)"
+                else -> "Custom Days (e.g. 2, 3, 15)"
+            }
+            "first_dose_start" -> when (lang) {
+                AppLanguage.HINDI -> "पहली खुराक कब लें:"
+                AppLanguage.BENGALI -> "প্রথম ডোজ কখন শুরু করবেন:"
+                AppLanguage.TELUGU -> "మొదటి మోతాదు ఎప్పుడు ప్రారంభించాలి:"
+                AppLanguage.MARATHI -> "पहिली मात्रा कधी सुरू करायची:"
+                AppLanguage.TAMIL -> "முதல் டோஸ் தொடங்கும் நேரம்:"
+                AppLanguage.GUJARATI -> "પહેલો ડોઝ ક્યારે લેવો:"
+                AppLanguage.KANNADA -> "ಮೊದಲ ಡೋಸ್ ಯಾವಾಗ ಪ್ರಾರಂಭಿಸಬೇಕು:"
+                AppLanguage.MALAYALAM -> "ആദ്യ ഡോസ് എപ്പോൾ ആരംഭിക്കണം:"
+                AppLanguage.PUNJABI -> "ਪਹਿਲੀ ਖੁਰਾਕ ਕਦੋਂ ਸ਼ੁਰੂ ਕਰਨੀ ਹੈ:"
+                else -> "When to start first dose:"
+            }
+            "start_after_interval" -> when (lang) {
+                AppLanguage.HINDI -> "{d} दिनों के बाद (पहली खुराक {date})"
+                AppLanguage.BENGALI -> "{d} দিন পর ({date} তারিখে প্রথম ডোজ)"
+                AppLanguage.TELUGU -> "{d} రోజుల తర్వాత ({date}న మొదటి మోతాదు)"
+                AppLanguage.MARATHI -> "{d} दिवसांनंतर ({date} रोजी पहिली मात्रा)"
+                AppLanguage.TAMIL -> "{d} நாட்களுக்குப் பிறகு ({date} அன்று முதல் டோஸ்)"
+                AppLanguage.GUJARATI -> "{d} દિવસ પછી ({date} ના રોજ પહેલો ડોઝ)"
+                AppLanguage.KANNADA -> "{d} ದಿನಗಳ ನಂತರ ({date} ರಂದು ಮೊದಲ ಡೋಸ್)"
+                AppLanguage.MALAYALAM -> "{d} ദിവസങ്ങൾക്ക് ശേഷം ({date}-ൽ ആദ്യ ഡോസ്)"
+                AppLanguage.PUNJABI -> "{d} ਦਿਨਾਂ ਬਾਅਦ ({date} ਨੂੰ ਪਹਿਲੀ ਖੁਰਾਕ)"
+                else -> "After {d} days (First dose on {date})"
+            }
+            "start_today" -> when (lang) {
+                AppLanguage.HINDI -> "आज से शुरू करें (फिर हर {d} दिन बाद)"
+                AppLanguage.BENGALI -> "আজ থেকেই শুরু করুন (তারপর প্রতি {d} দিন পর)"
+                AppLanguage.TELUGU -> "ఈరోజే ప్రారంభించండి (తర్వాత ప్రతి {d} రోజులకు)"
+                AppLanguage.MARATHI -> "आजपासून सुरू करा (नंतर दर {d} दिवसांनी)"
+                AppLanguage.TAMIL -> "இன்றே தொடங்கவும் (பின்னர் ஒவ்வொரு {d} நாட்களும்)"
+                AppLanguage.GUJARATI -> "આજથી શરૂ કરો (પછી દર {d} દિવસે)"
+                AppLanguage.KANNADA -> "ಇಂದೇ ಪ್ರಾರಂಭಿಸಿ (ನಂತರ ಪ್ರತಿ {d} ದಿನಗಳು)"
+                AppLanguage.MALAYALAM -> "ഇന്നുതന്നെ തുടങ്ങുക (പിന്നീട് ഓരോ {d} ദിവസവും)"
+                AppLanguage.PUNJABI -> "ਅੱਜ ਤੋਂ ਸ਼ੁਰੂ ਕਰੋ (ਫਿਰ ਹਰ {d} ਦਿਨ ਬਾਅਦ)"
+                else -> "Start today (then every {d} days)"
+            }
+            "simultaneous_alarm_set" -> when (lang) {
+                AppLanguage.HINDI -> "अलार्म स्वचालित रूप से {date} को {time} पर सेट हो जाएगा"
+                AppLanguage.BENGALI -> "অ্যালার্ম স্বয়ংক্রিয়ভাবে {date} তারিখে {time} এ সেট হবে"
+                AppLanguage.TELUGU -> "అలారం స్వయంచాలకంగా {date}న {time}కి సెట్ చేయబడుతుంది"
+                AppLanguage.MARATHI -> "अलार्म आपोआप {date} रोजी {time} वाजता सेट होईल"
+                AppLanguage.TAMIL -> "அலாரம் தானாகவே {date} அன்று {time} மணிக்கு அமைக்கப்படும்"
+                AppLanguage.GUJARATI -> "એલાર્મ આપમેળે {date} ના રોજ {time} વાગ્યે સેટ થશે"
+                AppLanguage.KANNADA -> "ಅಲಾರಾಂ ಸ್ವಯಂಚಾಲಿತವಾಗಿ {date} ರಂದು {time} ಕ್ಕೆ ಸೆಟ್ ಆಗುತ್ತದೆ"
+                AppLanguage.MALAYALAM -> "അലാറം സ്വയമേവ {date}-ൽ {time}-ന് സെറ്റ് ചെയ്യപ്പെടും"
+                AppLanguage.PUNJABI -> "ਅਲਾਰਮ ਆਪਣੇ ਆਪ {date} ਨੂੰ {time} 'ਤੇ ਸੈੱਟ ਹੋ ਜਾਵੇਗਾ"
+                else -> "Alarm will simultaneously be scheduled for {time} on {date}"
+            }
+            "alarm_time_12h" -> when (lang) {
+                AppLanguage.HINDI -> "अलार्म का समय (12-घंटे AM/PM प्रारूप)"
+                AppLanguage.BENGALI -> "অ্যালার্মের সময় (১২-ঘণ্টা AM/PM)"
+                AppLanguage.TELUGU -> "అలారం సమయం (12-గంటల AM/PM)"
+                AppLanguage.MARATHI -> "अलार्म वेळ (१२-तास AM/PM)"
+                AppLanguage.TAMIL -> "அலாரம் நேரம் (12 மணி AM/PM)"
+                AppLanguage.GUJARATI -> "એલાર્મ સમય (12-કલાક AM/PM)"
+                AppLanguage.KANNADA -> "ಅಲಾರಾಂ ಸಮಯ (12-ಗಂಟೆ AM/PM)"
+                AppLanguage.MALAYALAM -> "അലാറം സമയം (12 മണിക്കൂർ AM/PM)"
+                AppLanguage.PUNJABI -> "ਅਲਾਰਮ ਦਾ ਸਮਾਂ (12-ਘੰਟੇ AM/PM)"
+                else -> "Alarm Time (12-Hour AM/PM)"
+            }
+            "timing_slot" -> when (lang) {
+                AppLanguage.HINDI -> "दवा का समय (स्लॉट)"
+                AppLanguage.BENGALI -> "ওষুধ খাওয়ার সময় (স্লট)"
+                AppLanguage.TELUGU -> "మందు సమయం (స్లాట్)"
+                AppLanguage.MARATHI -> "औषधाची वेळ (स्लॉट)"
+                AppLanguage.TAMIL -> "மருந்து நேரம் (ஸ்லாட்)"
+                AppLanguage.GUJARATI -> "દવાનો સમય (સ્લોટ)"
+                AppLanguage.KANNADA -> "ಔಷಧಿ ಸಮಯ (ಸ್ಲಾಟ್)"
+                AppLanguage.MALAYALAM -> "മരുന്ന് സമയം (സ്ലോട്ട്)"
+                AppLanguage.PUNJABI -> "ਦਵਾਈ ਦਾ ਸਮਾਂ (ਸਲਾਟ)"
+                else -> "Medication Time (Slot)"
+            }
+            "frequency" -> when (lang) {
+                AppLanguage.HINDI -> "आवृत्ति (फ्रीक्वेंसी)"
+                AppLanguage.BENGALI -> "পুনরাবৃত্তি (ফ্রিকোয়েন্সি)"
+                AppLanguage.TELUGU -> "పునరావృతం"
+                AppLanguage.MARATHI -> "पुनरावृत्ती"
+                AppLanguage.TAMIL -> "அடிக்கடி நடப்பது"
+                AppLanguage.GUJARATI -> "આવૃત્તિ"
+                AppLanguage.KANNADA -> "ಆವರ್ತನ"
+                AppLanguage.MALAYALAM -> "ആവർത്തനം"
+                AppLanguage.PUNJABI -> "ਆਵਿਰਤੀ"
+                else -> "Frequency"
+            }
+            "am_morning" -> when (lang) {
+                AppLanguage.HINDI -> "☀️ AM (सुबह / दोपहर पूर्व)"
+                AppLanguage.BENGALI -> "☀️ AM (সকাল / পূর্বাহ্ন)"
+                AppLanguage.TELUGU -> "☀️ AM (ఉదయం)"
+                AppLanguage.MARATHI -> "☀️ AM (सकाळ)"
+                AppLanguage.TAMIL -> "☀️ AM (காலை)"
+                AppLanguage.GUJARATI -> "☀️ AM (સવાર)"
+                AppLanguage.KANNADA -> "☀️ AM (ಬೆಳಿಗ್ಗೆ)"
+                AppLanguage.MALAYALAM -> "☀️ AM (രാവിലെ)"
+                AppLanguage.PUNJABI -> "☀️ AM (ਸਵੇਰ)"
+                else -> "☀️ AM (Morning)"
+            }
+            "pm_afternoon_night" -> when (lang) {
+                AppLanguage.HINDI -> "🌙 PM (दोपहर / शाम / रात)"
+                AppLanguage.BENGALI -> "🌙 PM (দুপুর / সন্ধ্যা / রাত)"
+                AppLanguage.TELUGU -> "🌙 PM (మధ్యాహ్నం / రాత్రి)"
+                AppLanguage.MARATHI -> "🌙 PM (दुपार / रात्र)"
+                AppLanguage.TAMIL -> "🌙 PM (மதியம் / இரவு)"
+                AppLanguage.GUJARATI -> "🌙 PM (બપોર / રાત)"
+                AppLanguage.KANNADA -> "🌙 PM (ಮಧ್ಯಾಹ್ನ / ರಾತ್ರಿ)"
+                AppLanguage.MALAYALAM -> "🌙 PM (ഉച്ചയ്ക്ക് / രാത്രി)"
+                AppLanguage.PUNJABI -> "🌙 PM (ਦੁਪਹਿਰ / ਰਾਤ)"
+                else -> "🌙 PM (Afternoon / Night)"
+            }
+            "hour_label" -> when (lang) {
+                AppLanguage.HINDI -> "घंटा (Hour 1-12):"
+                AppLanguage.BENGALI -> "ঘণ্টা (১-১২):"
+                AppLanguage.TELUGU -> "గంట (1-12):"
+                AppLanguage.MARATHI -> "तास (१-१२):"
+                AppLanguage.TAMIL -> "மணி (1-12):"
+                AppLanguage.GUJARATI -> "કલાક (1-12):"
+                AppLanguage.KANNADA -> "ಗಂಟೆ (1-12):"
+                AppLanguage.MALAYALAM -> "മണിക്കൂർ (1-12):"
+                AppLanguage.PUNJABI -> "ਘੰਟਾ (1-12):"
+                else -> "Hour (1-12):"
+            }
+            "minutes_label" -> when (lang) {
+                AppLanguage.HINDI -> "मिनट (Minutes):"
+                AppLanguage.BENGALI -> "মিনিট:"
+                AppLanguage.TELUGU -> "నిమిషాలు:"
+                AppLanguage.MARATHI -> "मिनिटे:"
+                AppLanguage.TAMIL -> "நிமிடங்கள்:"
+                AppLanguage.GUJARATI -> "મિનિટ:"
+                AppLanguage.KANNADA -> "ನಿಮಿಷಗಳು:"
+                AppLanguage.MALAYALAM -> "മിനിറ്റുകൾ:"
+                AppLanguage.PUNJABI -> "ਮਿੰਟ:"
+                else -> "Minutes:"
+            }
+            "quick_presets_12h" -> when (lang) {
+                AppLanguage.HINDI -> "त्वरित 12-घंटे प्रीसेट:"
+                AppLanguage.BENGALI -> "দ্রুত ১২-ঘণ্টা প্রিসেট:"
+                AppLanguage.TELUGU -> "శీఘ్ర 12-గంటల సమయాలు:"
+                AppLanguage.MARATHI -> "जलद १२-तास प्रीसेट:"
+                AppLanguage.TAMIL -> "விரைவு 12 மணி தேர்வுகள்:"
+                AppLanguage.GUJARATI -> "ઝડપી 12-કલાક પ્રીસેટ્સ:"
+                AppLanguage.KANNADA -> "ತ್ವರಿತ 12-ಗಂಟೆ ಆಯ್ಕೆಗಳು:"
+                AppLanguage.MALAYALAM -> "ദ്രുത 12 മണിക്കൂർ പ്രീസെറ്റുകൾ:"
+                AppLanguage.PUNJABI -> "ਤੁਰੰਤ 12-ਘੰਟੇ ਪ੍ਰੀਸੈੱਟ:"
+                else -> "Quick 12-Hour Presets:"
             }
             "low_stock_warning" -> when (lang) {
                 AppLanguage.HINDI -> "स्टॉक कम है! जल्दी नया लाएं"

@@ -46,7 +46,7 @@ object MedicineAlarmScheduler {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
 
         val triggerMillis = if (!medicine.isRegular && medicine.nextDueDate.isNotBlank()) {
-            calculateTargetDateMillis(timeStr, medicine.nextDueDate)
+            calculateTargetDateMillis(timeStr, medicine.nextDueDate, medicine.intervalDays)
         } else {
             calculateTriggerMillis(timeStr)
         }
@@ -248,7 +248,7 @@ object MedicineAlarmScheduler {
         return calendar.timeInMillis
     }
 
-    private fun calculateTargetDateMillis(timeStr: String, targetDateStr: String): Long {
+    private fun calculateTargetDateMillis(timeStr: String, targetDateStr: String, intervalDays: Int = 1): Long {
         val parts = timeStr.split(":")
         val hour = parts.getOrNull(0)?.toIntOrNull() ?: 8
         val minute = parts.getOrNull(1)?.toIntOrNull() ?: 30
@@ -270,7 +270,8 @@ object MedicineAlarmScheduler {
 
         // If time already passed, schedule for next interval
         if (calendar.timeInMillis <= System.currentTimeMillis()) {
-            calendar.add(Calendar.DAY_OF_YEAR, 1)
+            val step = if (intervalDays > 0) intervalDays else 1
+            calendar.add(Calendar.DAY_OF_YEAR, step)
         }
 
         return calendar.timeInMillis

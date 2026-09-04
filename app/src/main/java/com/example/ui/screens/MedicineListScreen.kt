@@ -330,13 +330,13 @@ fun MedicineManagementCard(
                 }
 
                 val freqLabel = if (!medicine.isRegular) {
-                    "Every ${medicine.intervalDays} days"
+                    LanguageManager.get("periodic_interval", language).replace("{d}", medicine.intervalDays.toString())
                 } else {
                     when (medicine.frequencyType) {
-                        FrequencyType.DAILY.name -> "Daily"
+                        FrequencyType.DAILY.name -> LanguageManager.get("daily", language)
                         FrequencyType.DAYS_OF_WEEK.name -> medicine.daysOfWeek
                         FrequencyType.INTERVAL_HOURS.name -> "Every ${medicine.intervalHours}h"
-                        else -> "Daily"
+                        else -> LanguageManager.get("daily", language)
                     }
                 }
 
@@ -350,6 +350,32 @@ fun MedicineManagementCard(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+
+                if (!medicine.isRegular && medicine.nextDueDate.isNotBlank()) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.DateRange,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                            Text(
+                                text = "📅 " + medicine.nextDueDate,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                    }
                 }
             }
 
