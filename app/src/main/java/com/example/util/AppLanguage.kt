@@ -318,6 +318,78 @@ object LanguageManager {
                 AppLanguage.PUNJABI -> "ਦਵਾਈ ਦਾ ਨਾਮ"
                 else -> "Medicine Name"
             }
+            "scan_medicine_photo" -> when (lang) {
+                AppLanguage.HINDI -> "दवा के लेबल की फोटो खींचें या अपलोड करें"
+                AppLanguage.BENGALI -> "ওষুধের লেবেলের ছবি তুলুন বা আপলোড করুন"
+                AppLanguage.TELUGU -> "మందు లేబుల్ ఫోటో తీయండి లేదా అప్‌లోడ్ చేయండి"
+                AppLanguage.MARATHI -> "औषधाच्या लेबलचा फोटो काढा किंवा अपलोड करा"
+                AppLanguage.TAMIL -> "மருந்து லேபிளின் புகைப்படத்தை எடுக்கவும் அல்லது பதிவேற்றவும்"
+                AppLanguage.GUJARATI -> "દવાના લેબલનો ફોટો પાડો અથવા અપલોડ કરો"
+                AppLanguage.KANNADA -> "ಔಷಧಿ ಲೇಬಲ್‌ನ ಫೋಟೋ ತೆಗೆಯಿರಿ ಅಥವಾ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ"
+                AppLanguage.MALAYALAM -> "മരുന്ന് ലേബലിന്റെ ഫോട്ടോ എടുക്കുക അല്ലെങ്കിൽ അപ്‌ലോഡ് ചെയ്യുക"
+                AppLanguage.PUNJABI -> "ਦਵਾਈ ਦੇ ਲੇਬਲ ਦੀ ਫੋਟੋ ਲਵੋ ਜਾਂ ਅਪਲੋਡ ਕਰੋ"
+                else -> "Scan Medicine Label (Camera / Photo)"
+            }
+            "take_photo_btn" -> when (lang) {
+                AppLanguage.HINDI -> "📷 कैमरा से फोटो लें"
+                AppLanguage.BENGALI -> "📷 ক্যামেরা দিয়ে ছবি তুলুন"
+                AppLanguage.TELUGU -> "📷 కెమెరాతో ఫోటో తీయండి"
+                AppLanguage.MARATHI -> "📷 कॅमेराने फोटो काढा"
+                AppLanguage.TAMIL -> "📷 கேமராவால் புகைப்படம் எடுக்கவும்"
+                AppLanguage.GUJARATI -> "📷 કેમેરાથી ફોટો પાડો"
+                AppLanguage.KANNADA -> "📷 ಕ್ಯಾಮೆರಾದಿಂದ ಫೋಟೋ ತೆಗೆಯಿರಿ"
+                AppLanguage.MALAYALAM -> "📷 ക്യാമറ ഉപയോഗിച്ച് ഫോട്ടോ എടുക്കുക"
+                AppLanguage.PUNJABI -> "📷 ਕੈਮਰੇ ਨਾਲ ਫੋਟੋ ਲਵੋ"
+                else -> "📷 Take Photo"
+            }
+            "upload_photo_btn" -> when (lang) {
+                AppLanguage.HINDI -> "🖼️ फोटो अपलोड करें"
+                AppLanguage.BENGALI -> "🖼️ ছবি আপলোড করুন"
+                AppLanguage.TELUGU -> "🖼️ ఫోటో అప్‌లోడ్ చేయండి"
+                AppLanguage.MARATHI -> "🖼️ फोटो अपलोड करा"
+                AppLanguage.TAMIL -> "🖼️ புகைப்படம் பதிவேற்றவும்"
+                AppLanguage.GUJARATI -> "🖼️ ફોટો અપલોડ કરો"
+                AppLanguage.KANNADA -> "🖼️ ಫೋಟೋ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ"
+                AppLanguage.MALAYALAM -> "🖼️ ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യുക"
+                AppLanguage.PUNJABI -> "🖼️ ਫੋਟੋ ਅਪਲੋਡ ਕਰੋ"
+                else -> "🖼️ Upload Photo"
+            }
+            "manual_entry_note" -> when (lang) {
+                AppLanguage.HINDI -> "मैनुअल टाइपिंग हमेशा उपलब्ध है - नाम सीधे लिखें या बदलें"
+                AppLanguage.BENGALI -> "ম্যানুয়াল ইনপুট সবসময় চালু আছে - সরাসরি লিখতে বা বদলাতে পারেন"
+                AppLanguage.TELUGU -> "మాన్యువల్ ఎంట్రీ ఎల్లప్పుడూ అందుబాటులో ఉంది - టైప్ చేయవచ్చు"
+                AppLanguage.MARATHI -> "मॅन्युअल इनपुट नेहमी उपलब्ध आहे - थेट टाइप किंवा बदलू शकता"
+                AppLanguage.TAMIL -> "கைமுறை உள்ளீடு எப்போதும் உள்ளது - நேரடியாக தட்டச்சு செய்யலாம்"
+                AppLanguage.GUJARATI -> "મેન્યુઅલ ઇનપુટ હંમેશા ઉપલબ્ધ છે - સીધું ટાઈપ કરો"
+                AppLanguage.KANNADA -> "ಹಸ್ತಚಾಲಿತ ಇನ್‌ಪುಟ್ ಯಾವಾಗಲೂ ಲಭ್ಯವಿದೆ - ನೇರವಾಗಿ ಟೈಪ್ ಮಾಡಿ"
+                AppLanguage.MALAYALAM -> "മാനുവൽ ഇൻപുട്ട് ലഭ്യമാണ് - നേരിട്ട് ടൈപ്പ് ചെയ്യാം"
+                AppLanguage.PUNJABI -> "ਮੈਨੂਅਲ ਇਨਪੁਟ ਹਮੇਸ਼ਾ ਉਪਲਬਧ ਹੈ - ਸਿੱਧਾ ਟਾਈਪ ਕਰੋ"
+                else -> "Manual input is always available — type or edit anytime"
+            }
+            "detected_label_banner" -> when (lang) {
+                AppLanguage.HINDI -> "लेबल फोटो से पहचाना गया:"
+                AppLanguage.BENGALI -> "লেবেল ছবি থেকে সনাক্ত হয়েছে:"
+                AppLanguage.TELUGU -> "లేబుల్ ఫోటో నుండి గుర్తించబడింది:"
+                AppLanguage.MARATHI -> "लेबल फोटोवरून ओळखले:"
+                AppLanguage.TAMIL -> "லேபிள் புகைப்படத்திலிருந்து கண்டறியப்பட்டது:"
+                AppLanguage.GUJARATI -> "લેબલ ફોટામાંથી ઓળખાયું:"
+                AppLanguage.KANNADA -> "ಲೇಬಲ್ ಫೋಟೋದಿಂದ ಪತ್ತೆಯಾಗಿದೆ:"
+                AppLanguage.MALAYALAM -> "ലേബൽ ഫോട്ടോയിൽ നിന്ന് തിരിച്ചറിഞ്ഞു:"
+                AppLanguage.PUNJABI -> "ਲੇਬਲ ਫੋਟੋ ਤੋਂ ਪਛਾਣਿਆ ਗਿਆ:"
+                else -> "Auto-detected from label photo:"
+            }
+            "scanning_label_progress" -> when (lang) {
+                AppLanguage.HINDI -> "दवा का लेबल स्कैन किया जा रहा है..."
+                AppLanguage.BENGALI -> "ওষুধের লেবেল স্ক্যান করা হচ্ছে..."
+                AppLanguage.TELUGU -> "మందు లేబుల్ స్కాన్ చేయబడుతోంది..."
+                AppLanguage.MARATHI -> "औषधाचे लेबल स्कॅन होत आहे..."
+                AppLanguage.TAMIL -> "மருந்து லேபிள் ஸ்கேன் செய்யப்படுகிறது..."
+                AppLanguage.GUJARATI -> "દવાનું લેબલ સ્કેન થઈ રહ્યું છે..."
+                AppLanguage.KANNADA -> "ಔಷಧಿಯ ಲೇಬಲ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಲಾಗುತ್ತಿದೆ..."
+                AppLanguage.MALAYALAM -> "മരുന്ന് ലേബൽ സ്കാൻ ചെയ്യുന്നു..."
+                AppLanguage.PUNJABI -> "ਦਵਾਈ ਦਾ ਲੇਬਲ ਸਕੈਨ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ..."
+                else -> "Scanning medicine label photo..."
+            }
             "custom_days" -> when (lang) {
                 AppLanguage.HINDI -> "कस्टम दिन दर्ज करें"
                 else -> "Custom Days"

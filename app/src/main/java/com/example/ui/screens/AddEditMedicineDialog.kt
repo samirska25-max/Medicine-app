@@ -1,6 +1,33 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.clickable
+import android.graphics.Bitmap
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
+import com.example.util.MedicineLabelScanner
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -88,6 +115,60 @@ fun AddEditMedicineDialog(
         mutableStateOf(initialMedicine?.dosagePreset ?: if (selectedForm == MedicineForm.LIQUID) "10 ml (2 tsp)" else "1 (Full)")
     }
     var customDosageText by remember { mutableStateOf(initialMedicine?.dosage ?: "") }
+
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    var scannedBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var isScanningLabel by remember { mutableStateOf(false) }
+    var scanStatusMessage by remember { mutableStateOf<String?>(null) }
+    var scanSuggestions by remember { mutableStateOf<List<String>>(emptyList()) }
+
+    fun processScannedBitmap(bitmap: Bitmap) {
+        scannedBitmap = bitmap
+        isScanningLabel = true
+        scanStatusMessage = LanguageManager.get("scanning_label_progress", language)
+        coroutineScope.launch {
+            try {
+                val result = MedicineLabelScanner.analyzeMedicineLabel(bitmap)
+                if (result.name.isNotBlank()) {
+                    name = result.name
+                    scanStatusMessage = result.name
+                    scanSuggestions = result.suggestions
+                    if (result.form != null) {
+                        selectedForm = result.form
+                    }
+                    if (!result.dosage.isNullOrBlank()) {
+                        customDosageText = result.dosage
+                        dosagePreset = "Custom"
+                    }
+                }
+            } catch (e: Exception) {
+                // Fallback gracefully to manual typing
+            } finally {
+                isScanningLabel = false
+            }
+        }
+    }
+
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap: Bitmap? ->
+        if (bitmap != null) {
+            processScannedBitmap(bitmap)
+        }
+    }
+
+    val pickMediaLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            val bitmap = MedicineLabelScanner.decodeBitmapFromUri(context, uri)
+            if (bitmap != null) {
+                processScannedBitmap(bitmap)
+            }
+        }
+    }
 
     // Regular vs Periodic
     var isRegular by remember { mutableStateOf(initialMedicine?.isRegular ?: true) }
@@ -178,7 +259,201 @@ fun AddEditMedicineDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // Medicine Name
+                // Medicine Name with Camera / Photo Upload and Auto-Detection
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.AutoAwesome,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = LanguageManager.get("scan_medicine_photo", language),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        // Camera & Photo Upload Buttons
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = { takePictureLauncher.launch(null) },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("btn_take_medicine_photo"),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    LanguageManager.get("take_photo_btn", language),
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    pickMediaLauncher.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("btn_upload_medicine_photo"),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    LanguageManager.get("upload_photo_btn", language),
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
+                        }
+
+                        // Scanning Progress Indicator
+                        if (isScanningLabel) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(
+                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = LanguageManager.get("scanning_label_progress", language),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+
+                        // Scanned Thumbnail & Auto-detected Status
+                        scannedBitmap?.let { bmp ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Image(
+                                        bitmap = bmp.asImageBitmap(),
+                                        contentDescription = "Scanned medicine label",
+                                        modifier = Modifier
+                                            .size(52.dp)
+                                            .clip(RoundedCornerShape(6.dp)),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.CheckCircle,
+                                                contentDescription = null,
+                                                tint = Color(0xFF16A34A),
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Text(
+                                                text = LanguageManager.get("detected_label_banner", language),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color(0xFF16A34A)
+                                            )
+                                        }
+                                        Text(
+                                            text = name.ifBlank { "Label photo attached" },
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            scannedBitmap = null
+                                            scanSuggestions = emptyList()
+                                            scanStatusMessage = null
+                                        }
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = "Remove photo",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Suggestions Chips if model recognized alternate medicine names
+                        if (scanSuggestions.isNotEmpty()) {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(
+                                    text = "Suggestions from label:",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    scanSuggestions.forEach { suggestion ->
+                                        AssistChip(
+                                            onClick = {
+                                                name = suggestion
+                                                nameError = false
+                                            },
+                                            label = { Text(suggestion, style = MaterialTheme.typography.labelSmall) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Medicine Name Manual Input (Always available and editable)
                 OutlinedTextField(
                     value = name,
                     onValueChange = {
@@ -189,7 +464,18 @@ fun AddEditMedicineDialog(
                     placeholder = { Text("e.g. Paracetamol, Cough Syrup, Vitamin D3") },
                     isError = nameError,
                     supportingText = {
-                        if (nameError) Text("Please enter medicine name")
+                        if (nameError) {
+                            Text("Please enter medicine name")
+                        } else {
+                            Text(LanguageManager.get("manual_entry_note", language))
+                        }
+                    },
+                    trailingIcon = {
+                        if (name.isNotBlank()) {
+                            IconButton(onClick = { name = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Clear name")
+                            }
+                        }
                     },
                     singleLine = true,
                     modifier = Modifier
