@@ -30,6 +30,7 @@ import com.example.receiver.MedicineAlarmScheduler.EXTRA_RECORD_ID
 import com.example.receiver.MedicineAlarmScheduler.EXTRA_SCHEDULED_TIME
 import com.example.receiver.MedicineAlarmScheduler.EXTRA_SLOT_NAME
 import com.example.util.AlarmRingingManager
+import com.example.util.MealTimes
 import com.example.util.RingingAlarmInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -104,15 +105,18 @@ class AlarmReceiver : BroadcastReceiver() {
 
                         // Decrement medicine stock count and handle periodic rescheduling
                         if (medicineId > 0) {
-                            db.medicineDao().decrementStock(medicineId)
                             val medicine = db.medicineDao().getMedicineById(medicineId)
-                            if (medicine != null && !medicine.isRegular) {
-                                val nextDue = medicine.computeNextDueDate()
-                                db.medicineDao().updateNextDueDate(medicineId, nextDue)
-                                MedicineAlarmScheduler.scheduleMedicineAlarm(
-                                    context = context,
-                                    medicine = medicine.copy(nextDueDate = nextDue)
-                                )
+                            if (medicine != null) {
+                                val decrementAmount = medicine.getDoseDecrementAmount()
+                                db.medicineDao().decrementStockByAmount(medicineId, decrementAmount)
+                                if (!medicine.isRegular) {
+                                    val nextDue = medicine.computeNextDueDate()
+                                    db.medicineDao().updateNextDueDate(medicineId, nextDue)
+                                    MedicineAlarmScheduler.scheduleMedicineAlarm(
+                                        context = context,
+                                        medicine = medicine.copy(nextDueDate = nextDue)
+                                    )
+                                }
                             }
                         }
 
@@ -275,9 +279,10 @@ class AlarmReceiver : BroadcastReceiver() {
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
 
         val formIcon = if (medicineForm.equals("LIQUID", ignoreCase = true)) "💧" else "💊"
+        val timeDisplay = if (scheduledTime.isNotBlank()) MealTimes.formatTo12Hour(scheduledTime) else ""
         val contentText = buildString {
             append("$formIcon $slotName")
-            if (scheduledTime.isNotBlank()) append(" ($scheduledTime)")
+            if (timeDisplay.isNotBlank()) append(" ($timeDisplay)")
             if (dosage.isNotBlank()) append(" • $dosage")
             if (instructions.isNotBlank()) append(" • $instructions")
         }

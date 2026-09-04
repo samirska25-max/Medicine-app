@@ -284,7 +284,8 @@ fun MedicineTrackerApp(viewModel: MedicineViewModel) {
                             showAddEditDialog = true
                         },
                         onStopAlarm = { viewModel.stopRingingAlarm() },
-                        onCustomizeMealTimes = { showMealTimesDialog = true }
+                        onCustomizeMealTimes = { showMealTimesDialog = true },
+                        onRefillStock = { medId, amount -> viewModel.refillStock(medId, amount) }
                     )
 
                     1 -> MedicineListScreen(
@@ -303,7 +304,8 @@ fun MedicineTrackerApp(viewModel: MedicineViewModel) {
                         },
                         onTestAlarm = { med ->
                             viewModel.triggerTestAlarm(med)
-                        }
+                        },
+                        onRefillStock = { medId, amount -> viewModel.refillStock(medId, amount) }
                     )
 
                     2 -> HistoryScreen(

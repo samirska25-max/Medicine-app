@@ -145,5 +145,69 @@ class ExampleUnitTest {
             assertTrue(appTitle.isNotBlank())
         }
     }
+
+    @Test
+    fun test12HourClockFormatConversion() {
+        // Standard conversions
+        assertEquals("8:00 AM", MealTimes.formatTo12Hour("08:00"))
+        assertEquals("1:30 PM", MealTimes.formatTo12Hour("13:30"))
+        assertEquals("12:00 PM", MealTimes.formatTo12Hour("12:00"))
+        assertEquals("12:30 AM", MealTimes.formatTo12Hour("00:30"))
+        assertEquals("9:45 PM", MealTimes.formatTo12Hour("21:45"))
+        assertEquals("11:59 PM", MealTimes.formatTo12Hour("23:59"))
+
+        // MedicineEntity resolved 12-hour formatting
+        val morningMed = MedicineEntity(
+            name = "Aspirin",
+            dosage = "100 mg",
+            timingSlot = TimingSlot.AFTER_BREAKFAST.name
+        )
+        val defaultMeals = MealTimes()
+        // Breakfast is 08:00, after breakfast is +30min = 08:30 -> "8:30 AM"
+        assertEquals("8:30 AM", morningMed.getResolvedTime12Hour(defaultMeals))
+
+        val eveningMed = MedicineEntity(
+            name = "Night Medication",
+            dosage = "1 Pill",
+            timingSlot = TimingSlot.BEDTIME.name
+        )
+        // Bedtime is 22:00 -> "10:00 PM"
+        assertEquals("10:00 PM", eveningMed.getResolvedTime12Hour(defaultMeals))
+    }
+
+    @Test
+    fun testStockManagementAndLowStockThreshold() {
+        // Solid medication (tablets/capsules)
+        val tabletMed = MedicineEntity(
+            name = "Paracetamol",
+            dosage = "2 Tablets",
+            medicineForm = MedicineForm.TABLET.name,
+            stockCount = 12,
+            lowStockThreshold = 10
+        )
+        assertFalse(tabletMed.isLowStock())
+        assertEquals(2, tabletMed.getDoseDecrementAmount())
+        assertEquals("tablets/capsules", tabletMed.getStockUnit())
+        assertEquals("pills", tabletMed.getStockUnitShort())
+
+        // Liquid medication (ml)
+        val liquidMed = MedicineEntity(
+            name = "Cough Syrup",
+            dosage = "15 ml",
+            medicineForm = MedicineForm.LIQUID.name,
+            stockCount = 45,
+            lowStockThreshold = 50
+        )
+        assertTrue(liquidMed.isLowStock())
+        assertFalse(liquidMed.isOutOfStock())
+        assertEquals(15, liquidMed.getDoseDecrementAmount())
+        assertEquals("ml", liquidMed.getStockUnit())
+        assertEquals("ml", liquidMed.getStockUnitShort())
+
+        // Out of stock
+        val emptyMed = tabletMed.copy(stockCount = 0)
+        assertTrue(emptyMed.isOutOfStock())
+        assertTrue(emptyMed.isLowStock())
+    }
 }
 

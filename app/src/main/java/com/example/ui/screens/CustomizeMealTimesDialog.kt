@@ -161,7 +161,7 @@ fun CustomizeMealTimesDialog(
                     icon = Icons.Default.WbSunny,
                     accentColor = Color(0xFFEA580C),
                     presets = listOf("07:00", "07:30", "08:00", "08:30", "09:00"),
-                    subtext = "Before Breakfast: ${MealTimes.offsetMinutes(breakfast, -30)} • After Breakfast: ${MealTimes.offsetMinutes(breakfast, 30)}",
+                    subtext = "Before Breakfast: ${MealTimes.formatTo12Hour(MealTimes.offsetMinutes(breakfast, -30))} • After Breakfast: ${MealTimes.formatTo12Hour(MealTimes.offsetMinutes(breakfast, 30))}",
                     onTimeChange = { breakfast = it }
                 )
 
@@ -172,7 +172,7 @@ fun CustomizeMealTimesDialog(
                     icon = Icons.Default.LightMode,
                     accentColor = Color(0xFFD97706),
                     presets = listOf("12:00", "12:30", "13:00", "13:30", "14:00"),
-                    subtext = "Before Lunch: ${MealTimes.offsetMinutes(lunch, -30)} • After Lunch: ${MealTimes.offsetMinutes(lunch, 30)}",
+                    subtext = "Before Lunch: ${MealTimes.formatTo12Hour(MealTimes.offsetMinutes(lunch, -30))} • After Lunch: ${MealTimes.formatTo12Hour(MealTimes.offsetMinutes(lunch, 30))}",
                     onTimeChange = { lunch = it }
                 )
 
@@ -183,7 +183,7 @@ fun CustomizeMealTimesDialog(
                     icon = Icons.Default.DarkMode,
                     accentColor = Color(0xFF7C3AED),
                     presets = listOf("19:00", "19:30", "20:00", "20:30", "21:00"),
-                    subtext = "Before Dinner: ${MealTimes.offsetMinutes(dinner, -30)} • After Dinner: ${MealTimes.offsetMinutes(dinner, 30)}",
+                    subtext = "Before Dinner: ${MealTimes.formatTo12Hour(MealTimes.offsetMinutes(dinner, -30))} • After Dinner: ${MealTimes.formatTo12Hour(MealTimes.offsetMinutes(dinner, 30))}",
                     onTimeChange = { dinner = it }
                 )
 
@@ -194,7 +194,7 @@ fun CustomizeMealTimesDialog(
                     icon = Icons.Default.DarkMode,
                     accentColor = Color(0xFF1E3A8A),
                     presets = listOf("21:30", "22:00", "22:30", "23:00", "23:30"),
-                    subtext = "Bedtime Dose Alarm Time",
+                    subtext = "Bedtime Dose Alarm: ${MealTimes.formatTo12Hour(bedtime)}",
                     onTimeChange = { bedtime = it }
                 )
             }
@@ -299,7 +299,7 @@ private fun MealItemCard(
                         modifier = Modifier.padding(horizontal = 2.dp)
                     ) {
                         Text(
-                            text = time,
+                            text = MealTimes.formatTo12Hour(time),
                             fontWeight = FontWeight.Bold,
                             fontSize = 17.sp,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -327,7 +327,7 @@ private fun MealItemCard(
                     FilterChip(
                         selected = isSelected,
                         onClick = { onTimeChange(preset) },
-                        label = { Text(preset, style = MaterialTheme.typography.labelSmall) },
+                        label = { Text(MealTimes.formatTo12Hour(preset), style = MaterialTheme.typography.labelSmall) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = accentColor,
                             selectedLabelColor = Color.White

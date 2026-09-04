@@ -46,6 +46,7 @@ import com.example.data.DoseRecordEntity
 import com.example.ui.viewmodel.AdherenceStats
 import com.example.util.AppLanguage
 import com.example.util.LanguageManager
+import com.example.util.MealTimes
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -379,7 +380,7 @@ fun HistoryRecordRow(record: DoseRecordEntity) {
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "${record.dosage} • ${record.slotName} (${record.scheduledTime})",
+                    text = "${record.dosage} • ${record.slotName} (${MealTimes.formatTo12Hour(record.scheduledTime)})",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

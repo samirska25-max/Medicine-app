@@ -1,8 +1,11 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.DateRange
@@ -34,6 +38,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -47,6 +52,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.data.FrequencyType
 import com.example.data.MedicineEntity
@@ -60,9 +66,11 @@ fun MedicineListScreen(
     onAddMedicine: () -> Unit,
     onEditMedicine: (MedicineEntity) -> Unit,
     onDeleteMedicine: (MedicineEntity) -> Unit,
-    onTestAlarm: (MedicineEntity) -> Unit
+    onTestAlarm: (MedicineEntity) -> Unit,
+    onRefillStock: (Long, Int) -> Unit = { _, _ -> }
 ) {
     var medicineToDelete by remember { mutableStateOf<MedicineEntity?>(null) }
+    var medicineToRefill by remember { mutableStateOf<MedicineEntity?>(null) }
 
     LazyColumn(
         modifier = Modifier
@@ -142,7 +150,8 @@ fun MedicineListScreen(
                     language = language,
                     onEdit = { onEditMedicine(medicine) },
                     onDelete = { medicineToDelete = medicine },
-                    onTestAlarm = { onTestAlarm(medicine) }
+                    onTestAlarm = { onTestAlarm(medicine) },
+                    onRefill = { medicineToRefill = medicine }
                 )
             }
         }
@@ -179,6 +188,19 @@ fun MedicineListScreen(
             }
         )
     }
+
+    if (medicineToRefill != null) {
+        val med = medicineToRefill!!
+        QuickRefillDialog(
+            medicine = med,
+            language = language,
+            onDismiss = { medicineToRefill = null },
+            onRefill = { amount ->
+                onRefillStock(med.id, amount)
+                medicineToRefill = null
+            }
+        )
+    }
 }
 
 @Composable
@@ -187,9 +209,11 @@ fun MedicineManagementCard(
     language: AppLanguage,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onTestAlarm: () -> Unit
+    onTestAlarm: () -> Unit,
+    onRefill: () -> Unit = {}
 ) {
-    val isLowStock = medicine.stockCount <= medicine.lowStockThreshold
+    val isLowStock = medicine.isLowStock()
+    val isOutOfStock = medicine.isOutOfStock()
     val formIcon = if (medicine.medicineForm.equals("LIQUID", ignoreCase = true)) "💧" else "💊"
     val formBadgeText = when (medicine.medicineForm) {
         "LIQUID" -> LanguageManager.get("liquid_syrup", language)
@@ -197,7 +221,7 @@ fun MedicineManagementCard(
         "INJECTION" -> LanguageManager.get("injection", language)
         else -> LanguageManager.get("tablet_capsule", language)
     }
-    val stockUnit = if (medicine.medicineForm.equals("LIQUID", ignoreCase = true)) "ml" else "units"
+    val stockUnit = medicine.getStockUnitShort()
 
     ElevatedCard(
         modifier = Modifier
@@ -297,7 +321,7 @@ fun MedicineManagementCard(
                             tint = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         Text(
-                            text = "${medicine.getResolvedSlotTitle()} (${medicine.getResolvedTime()})",
+                            text = "${medicine.getResolvedSlotTitle()} (${medicine.getResolvedTime12Hour()})",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
@@ -329,7 +353,7 @@ fun MedicineManagementCard(
                 }
             }
 
-            // Stock Count with low stock indicator
+            // Stock Count with low stock indicator and Quick Refill button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -337,8 +361,15 @@ fun MedicineManagementCard(
             ) {
                 Surface(
                     shape = RoundedCornerShape(6.dp),
-                    color = if (isLowStock) Color(0xFFFEE2E2) else MaterialTheme.colorScheme.surfaceVariant,
-                    border = if (isLowStock) BorderStroke(1.dp, Color(0xFFDC2626)) else null
+                    color = when {
+                        isOutOfStock -> Color(0xFFFEE2E2)
+                        isLowStock -> Color(0xFFFEF3C7)
+                        else -> MaterialTheme.colorScheme.surfaceVariant
+                    },
+                    border = if (isLowStock || isOutOfStock) BorderStroke(1.dp, if (isOutOfStock) Color(0xFFDC2626) else Color(0xFFD97706)) else null,
+                    modifier = Modifier
+                        .clickable { onRefill() }
+                        .testTag("med_stock_badge_${medicine.id}")
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -346,33 +377,60 @@ fun MedicineManagementCard(
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(
-                            imageVector = if (isLowStock) Icons.Default.Warning else Icons.Default.Inventory,
+                            imageVector = if (isLowStock || isOutOfStock) Icons.Default.Warning else Icons.Default.Inventory,
                             contentDescription = null,
                             modifier = Modifier.size(14.dp),
-                            tint = if (isLowStock) Color(0xFFDC2626) else MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = if (isOutOfStock) Color(0xFFDC2626) else if (isLowStock) Color(0xFFB45309) else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = if (isLowStock) "Low Stock: ${medicine.stockCount} $stockUnit remaining!" else "Stock: ${medicine.stockCount} $stockUnit",
+                            text = when {
+                                isOutOfStock -> "Out of stock (0 $stockUnit) • Refill"
+                                isLowStock -> "Low: ${medicine.stockCount} $stockUnit (Alert <= ${medicine.lowStockThreshold}) • Refill"
+                                else -> "Stock: ${medicine.stockCount} $stockUnit"
+                            },
                             style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (isLowStock) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isLowStock) Color(0xFFDC2626) else MaterialTheme.colorScheme.onSurfaceVariant
+                            fontWeight = if (isLowStock || isOutOfStock) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isOutOfStock) Color(0xFFDC2626) else if (isLowStock) Color(0xFFB45309) else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
-                // Test Alarm button
-                OutlinedButton(
-                    onClick = onTestAlarm,
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Icon(
-                        Icons.Default.NotificationsActive,
-                        contentDescription = "Test Alarm",
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(LanguageManager.get("test_alarm", language), style = MaterialTheme.typography.labelSmall)
+                    // Refill button
+                    Button(
+                        onClick = onRefill,
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isOutOfStock) Color(0xFFDC2626) else if (isLowStock) Color(0xFFD97706) else MaterialTheme.colorScheme.primary
+                        ),
+                        modifier = Modifier.testTag("btn_refill_med_${medicine.id}")
+                    ) {
+                        Text(
+                            text = "+ " + LanguageManager.get("btn_refill", language),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    // Test Alarm button
+                    OutlinedButton(
+                        onClick = onTestAlarm,
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.testTag("btn_test_alarm_${medicine.id}")
+                    ) {
+                        Icon(
+                            Icons.Default.NotificationsActive,
+                            contentDescription = "Test Alarm",
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(LanguageManager.get("test_alarm", language), style = MaterialTheme.typography.labelSmall)
+                    }
                 }
             }
 

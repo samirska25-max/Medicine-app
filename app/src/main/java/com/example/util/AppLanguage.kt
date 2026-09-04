@@ -322,6 +322,90 @@ object LanguageManager {
                 AppLanguage.HINDI -> "कस्टम दिन दर्ज करें"
                 else -> "Custom Days"
             }
+            "low_stock_warning" -> when (lang) {
+                AppLanguage.HINDI -> "स्टॉक कम है! जल्दी नया लाएं"
+                AppLanguage.BENGALI -> "ওষুধ শেষ হতে চলেছে! শীঘ্রই আনুন"
+                AppLanguage.TELUGU -> "స్టాక్ తక్కువగా ఉంది! రీఫిల్ చేయండి"
+                AppLanguage.MARATHI -> "औषध संपत आले आहे! लवकर आणा"
+                AppLanguage.TAMIL -> "மருந்து கையிருப்பு குறைவு! வாங்கவும்"
+                AppLanguage.GUJARATI -> "સ્ટોક ઓછો છે! નવું લાવો"
+                AppLanguage.KANNADA -> "ಔಷಧಿ ಕಡಿಮೆ ಇದೆ! ಶೀಘ್ರವಾಗಿ ತನ್ನಿ"
+                AppLanguage.MALAYALAM -> "മരുന്ന് തീരാറായി! ഉടൻ വാങ്ങുക"
+                AppLanguage.PUNJABI -> "ਦਵਾਈ ਖਤਮ ਹੋਣ ਵਾਲੀ ਹੈ! ਨਵੀਂ ਲਿਆਓ"
+                else -> "Low Stock! Refill Soon"
+            }
+            "refill_stock" -> when (lang) {
+                AppLanguage.HINDI -> "स्टॉक जोड़ें (Refill)"
+                AppLanguage.BENGALI -> "স্টক যোগ করুন (Refill)"
+                AppLanguage.TELUGU -> "రీఫిల్ చేయండి"
+                AppLanguage.MARATHI -> "औषध स्टॉक भरा"
+                AppLanguage.TAMIL -> "ரீபில் செய்யவும்"
+                AppLanguage.GUJARATI -> "સ્ટોક ઉમેરો"
+                AppLanguage.KANNADA -> "ರೀಫಿಲ್ ಮಾಡಿ"
+                AppLanguage.MALAYALAM -> "സ്റ്റോക്ക് റീഫിൽ ചെയ്യുക"
+                AppLanguage.PUNJABI -> "ਸਟਾਕ ਸ਼ਾਮਲ ਕਰੋ"
+                else -> "Refill Stock"
+            }
+            "in_stock" -> when (lang) {
+                AppLanguage.HINDI -> "स्टॉक में है"
+                AppLanguage.BENGALI -> "স্টকে আছে"
+                AppLanguage.TELUGU -> "స్టాక్ ఉంది"
+                AppLanguage.MARATHI -> "शिल्लक आहे"
+                AppLanguage.TAMIL -> "கையிருப்பில் உள்ளது"
+                AppLanguage.GUJARATI -> "સ્ટોકમાં છે"
+                AppLanguage.KANNADA -> "ದಾಸ್ತಾನು ಇದೆ"
+                AppLanguage.MALAYALAM -> "സ്റ്റോക്കുണ്ട്"
+                AppLanguage.PUNJABI -> "ਸਟਾਕ ਵਿੱਚ ਹੈ"
+                else -> "In Stock"
+            }
+            "out_of_stock" -> when (lang) {
+                AppLanguage.HINDI -> "स्टॉक समाप्त (Out of Stock)"
+                AppLanguage.BENGALI -> "স্টক শেষ"
+                AppLanguage.TELUGU -> "స్టాక్ అయిపోయింది"
+                AppLanguage.MARATHI -> "स्टॉक संपला"
+                AppLanguage.TAMIL -> "கையிருப்பு இல்லை"
+                AppLanguage.GUJARATI -> "સ્ટોક ખતમ"
+                AppLanguage.KANNADA -> "ದಾಸ್ತಾನು ಮುಗಿದಿದೆ"
+                AppLanguage.MALAYALAM -> "സ്റ്റോക്ക് തീർന്നു"
+                AppLanguage.PUNJABI -> "ਸਟਾਕ ਖਤਮ"
+                else -> "Out of Stock"
+            }
+            "stock_input_tablets" -> when (lang) {
+                AppLanguage.HINDI -> "गोलियों / कैप्सूल की संख्या (Tablets/Capsules)"
+                AppLanguage.BENGALI -> "ট্যাবলেট / ক্যাপসুল সংখ্যা"
+                AppLanguage.TELUGU -> "టాబ్లెట్లు / క్యాప్సూల్స్ సంఖ్య"
+                AppLanguage.MARATHI -> "गोळ्या / कॅप्सूलची संख्या"
+                AppLanguage.TAMIL -> "மாத்திரைகள் / காப்ஸ்யூல்கள் எண்ணிக்கை"
+                AppLanguage.GUJARATI -> "ગોળીઓ / કેપ્સ્યુલની સંખ્યા"
+                AppLanguage.KANNADA -> "ಮಾತ್ರೆಗಳು / ಕ್ಯಾಪ್ಸುಲ್ಗಳ ಸಂಖ್ಯೆ"
+                AppLanguage.MALAYALAM -> "ഗുളികകളുടെ എണ്ണം"
+                AppLanguage.PUNJABI -> "ਗੋਲੀਆਂ / ਕੈਪਸੂਲਾਂ ਦੀ ਗਿਣਤੀ"
+                else -> "No. of Tablets / Capsules"
+            }
+            "stock_input_liquid" -> when (lang) {
+                AppLanguage.HINDI -> "सिरप / लिक्विड की कुल मात्रा (ml)"
+                AppLanguage.BENGALI -> "সিরাপ / তরল ওষুধের পরিমাণ (ml)"
+                AppLanguage.TELUGU -> "సిరప్ / ద్రవ ఔషధ పరిమాణం (ml)"
+                AppLanguage.MARATHI -> "सिरप / द्रवाचे प्रमाण (ml)"
+                AppLanguage.TAMIL -> "சிரப் / திரவ மருந்தின் அளவு (ml)"
+                AppLanguage.GUJARATI -> "સીરપ / પ્રવાહી જથ્થો (ml)"
+                AppLanguage.KANNADA -> "ಸಿರಪ್ / ದ್ರವದ ಪ್ರಮಾಣ (ml)"
+                AppLanguage.MALAYALAM -> "സിറപ്പ് / ദ്രാവക അളവ് (ml)"
+                AppLanguage.PUNJABI -> "ਸ਼ਰਬਤ / ਤਰਲ ਦਵਾਈ ਦੀ ਮਾਤਰਾ (ml)"
+                else -> "Liquid Medicine Volume (ml)"
+            }
+            "low_stock_threshold" -> when (lang) {
+                AppLanguage.HINDI -> "न्यूनतम अलर्ट सीमा (इससे कम होने पर सूचित करें)"
+                AppLanguage.BENGALI -> "কম স্টকের সতর্কতা সীমা"
+                AppLanguage.TELUGU -> "తక్కువ స్టాక్ హెచ్చరిక స్థాయి"
+                AppLanguage.MARATHI -> "कमी स्टॉक इशारा मर्यादा"
+                AppLanguage.TAMIL -> "குறைந்த கையிருப்பு எச்சரிக்கை அளவு"
+                AppLanguage.GUJARATI -> "ઓછા સ્ટોકની ચેતવણી મર્યાદા"
+                AppLanguage.KANNADA -> "ಕಡಿಮೆ ದಾಸ್ತಾನು ಎಚ್ಚರಿಕೆ ಮಟ್ಟ"
+                AppLanguage.MALAYALAM -> "കുറഞ്ഞ സ്റ്റോക്ക് മുന്നറിയിപ്പ് ലെവൽ"
+                AppLanguage.PUNJABI -> "ਘੱਟ ਸਟਾਕ ਚੇਤਾਵਨੀ ਪੱਧਰ"
+                else -> "Low Stock Alert Level"
+            }
             else -> key
         }
     }

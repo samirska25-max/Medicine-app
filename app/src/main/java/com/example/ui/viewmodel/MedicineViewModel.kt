@@ -263,8 +263,9 @@ class MedicineViewModel(application: Application) : AndroidViewModel(application
         AlarmRingingManager.stopRinging(context)
         viewModelScope.launch(Dispatchers.IO) {
             dao.updateDoseStatus(record.id, DoseStatus.TAKEN.name, System.currentTimeMillis())
-            dao.decrementStock(record.medicineId)
             val medicine = dao.getMedicineById(record.medicineId)
+            val decrementAmt = medicine?.getDoseDecrementAmount() ?: 1
+            dao.decrementStockByAmount(record.medicineId, decrementAmt)
             if (medicine != null && !medicine.isRegular) {
                 val nextDue = medicine.computeNextDueDate()
                 dao.updateNextDueDate(record.medicineId, nextDue)
@@ -276,7 +277,9 @@ class MedicineViewModel(application: Application) : AndroidViewModel(application
     fun handleAlarmActionTaken(info: RingingAlarmInfo) {
         AlarmRingingManager.stopRinging(context)
         viewModelScope.launch(Dispatchers.IO) {
-            dao.decrementStock(info.medicineId)
+            val medicine = dao.getMedicineById(info.medicineId)
+            val decrementAmt = medicine?.getDoseDecrementAmount() ?: 1
+            dao.decrementStockByAmount(info.medicineId, decrementAmt)
             if (info.recordId > 0) {
                 dao.updateDoseStatus(info.recordId, DoseStatus.TAKEN.name, System.currentTimeMillis())
             } else {
@@ -285,12 +288,23 @@ class MedicineViewModel(application: Application) : AndroidViewModel(application
                     dao.updateDoseStatus(existing.id, DoseStatus.TAKEN.name, System.currentTimeMillis())
                 }
             }
-            val medicine = dao.getMedicineById(info.medicineId)
             if (medicine != null && !medicine.isRegular) {
                 val nextDue = medicine.computeNextDueDate()
                 dao.updateNextDueDate(info.medicineId, nextDue)
                 MedicineAlarmScheduler.scheduleMedicineAlarm(context, medicine.copy(nextDueDate = nextDue))
             }
+        }
+    }
+
+    fun refillStock(medicineId: Long, amountToAdd: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dao.addStock(medicineId, amountToAdd)
+        }
+    }
+
+    fun updateStock(medicineId: Long, newStock: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dao.updateStock(medicineId, newStock)
         }
     }
 

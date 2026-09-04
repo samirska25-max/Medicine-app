@@ -25,6 +25,8 @@ import androidx.compose.material.icons.filled.Medication
 import androidx.compose.material.icons.filled.NoteAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -45,6 +47,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.example.data.FrequencyType
 import com.example.data.MedicineEntity
@@ -104,6 +107,19 @@ fun AddEditMedicineDialog(
         )
     }
     var customTime by remember { mutableStateOf(initialMedicine?.customTime ?: "08:30") }
+
+    val initialTimeParts = (initialMedicine?.customTime ?: "08:30").split(":")
+    val initH = initialTimeParts.firstOrNull()?.toIntOrNull() ?: 8
+    val initM = initialTimeParts.getOrNull(1)?.toIntOrNull() ?: 30
+    var customHour12 by remember { mutableIntStateOf(if (initH == 0) 12 else if (initH > 12) initH - 12 else initH) }
+    var customMinute by remember { mutableIntStateOf(initM) }
+    var customIsPm by remember { mutableStateOf(initH >= 12) }
+
+    fun updateCustomTime(h12: Int, m: Int, isPm: Boolean) {
+        var h24 = h12 % 12
+        if (isPm) h24 += 12
+        customTime = String.format(Locale.US, "%02d:%02d", h24, m)
+    }
 
     // Frequency Type (when regular)
     var frequencyType by remember {
@@ -421,7 +437,7 @@ fun AddEditMedicineDialog(
                             onClick = { selectedSlot = slot },
                             label = {
                                 Text(
-                                    text = if (slot == TimingSlot.CUSTOM) "Custom Time" else "${slot.title} ($slotResolvedTime)",
+                                    text = if (slot == TimingSlot.CUSTOM) "Custom Time" else "${slot.title} (${MealTimes.formatTo12Hour(slotResolvedTime)})",
                                     style = MaterialTheme.typography.labelSmall
                                 )
                             },
@@ -433,19 +449,153 @@ fun AddEditMedicineDialog(
                     }
                 }
 
-                // If Custom Time selected
+                // If Custom Time selected - 12-Hour AM/PM picker
                 if (selectedSlot == TimingSlot.CUSTOM) {
-                    OutlinedTextField(
-                        value = customTime,
-                        onValueChange = { customTime = it },
-                        label = { Text("Custom Time (HH:mm, 24-hour)") },
-                        placeholder = { Text("08:30") },
-                        leadingIcon = { Icon(Icons.Default.Alarm, contentDescription = null) },
-                        singleLine = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("input_custom_time")
-                    )
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(Icons.Default.Alarm, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    Text(
+                                        text = "Alarm Time (12-Hour Clock)",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.primary
+                                ) {
+                                    Text(
+                                        text = MealTimes.formatTo12Hour(customTime),
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+
+                            // AM / PM Toggle
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                FilterChip(
+                                    selected = !customIsPm,
+                                    onClick = {
+                                        customIsPm = false
+                                        updateCustomTime(customHour12, customMinute, false)
+                                    },
+                                    label = { Text("☀️ AM (Morning)", fontWeight = FontWeight.Bold) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                FilterChip(
+                                    selected = customIsPm,
+                                    onClick = {
+                                        customIsPm = true
+                                        updateCustomTime(customHour12, customMinute, true)
+                                    },
+                                    label = { Text("🌙 PM (Afternoon/Night)", fontWeight = FontWeight.Bold) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+
+                            // Hour Selection (1 to 12)
+                            Text(
+                                text = "Hour:",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                (1..12).forEach { hour ->
+                                    val isSelected = customHour12 == hour
+                                    FilterChip(
+                                        selected = isSelected,
+                                        onClick = {
+                                            customHour12 = hour
+                                            updateCustomTime(hour, customMinute, customIsPm)
+                                        },
+                                        label = { Text("$hour", style = MaterialTheme.typography.labelSmall) }
+                                    )
+                                }
+                            }
+
+                            // Minute Selection
+                            Text(
+                                text = "Minutes:",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                listOf(0, 15, 30, 45).forEach { min ->
+                                    val isSelected = customMinute == min
+                                    FilterChip(
+                                        selected = isSelected,
+                                        onClick = {
+                                            customMinute = min
+                                            updateCustomTime(customHour12, min, customIsPm)
+                                        },
+                                        label = { Text(String.format(Locale.US, ":%02d", min), style = MaterialTheme.typography.labelSmall) },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+
+                            // Quick 12-Hour Presets
+                            Text(
+                                text = "Quick 12-Hour Presets:",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            val presets12h = listOf("07:00 AM", "08:00 AM", "09:00 AM", "12:30 PM", "02:00 PM", "06:00 PM", "08:30 PM", "10:00 PM")
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                presets12h.forEach { preset12 ->
+                                    val isSelected = MealTimes.formatTo12Hour(customTime).equals(preset12, ignoreCase = true)
+                                    FilterChip(
+                                        selected = isSelected,
+                                        onClick = {
+                                            val isPm = preset12.contains("PM", ignoreCase = true)
+                                            val numPart = preset12.replace("AM", "").replace("PM", "").trim()
+                                            val parts = numPart.split(":")
+                                            val h = parts[0].toIntOrNull() ?: 8
+                                            val m = parts.getOrNull(1)?.toIntOrNull() ?: 0
+                                            customHour12 = h
+                                            customMinute = m
+                                            customIsPm = isPm
+                                            updateCustomTime(h, m, isPm)
+                                        },
+                                        label = { Text(preset12, style = MaterialTheme.typography.labelSmall) }
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
 
                 // Frequency Selection (if regular)
@@ -501,45 +651,140 @@ fun AddEditMedicineDialog(
                     }
                 }
 
-                // Stock & Low Stock Counter
-                Text(
-                    text = LanguageManager.get("stock_count", language),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // Stock & Low Stock Tracker Card (Pills / Capsules / ml Liquid)
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    OutlinedTextField(
-                        value = stockCountText,
-                        onValueChange = { stockCountText = it.filter { ch -> ch.isDigit() } },
-                        label = {
-                            Text(
-                                if (selectedForm == MedicineForm.LIQUID) "Syrup (ml)" else "Units / Pills"
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Inventory,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.height(20.dp)
                             )
-                        },
-                        placeholder = { Text("30") },
-                        leadingIcon = { Icon(Icons.Default.Inventory, contentDescription = null) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("input_stock_count")
-                    )
+                            Text(
+                                text = "Medicine Stock & Refill Tracker",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
 
-                    OutlinedTextField(
-                        value = lowStockText,
-                        onValueChange = { lowStockText = it.filter { ch -> ch.isDigit() } },
-                        label = { Text("Low Alert Level") },
-                        placeholder = { Text("5") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("input_low_stock")
-                    )
+                        val unitTitle = when (selectedForm) {
+                            MedicineForm.LIQUID -> "Liquid Volume in ml"
+                            MedicineForm.TABLET -> "No. of Tablets / Capsules"
+                            MedicineForm.DROPS -> "Drops / ml"
+                            MedicineForm.INJECTION -> "Vials / Units"
+                            MedicineForm.OTHER -> "Doses / Units"
+                        }
+                        val unitSuffix = when (selectedForm) {
+                            MedicineForm.LIQUID -> "ml"
+                            MedicineForm.TABLET -> "tablets"
+                            MedicineForm.DROPS -> "drops"
+                            MedicineForm.INJECTION -> "vials"
+                            MedicineForm.OTHER -> "units"
+                        }
+
+                        Text(
+                            text = "Track your medicine quantity so you can stock up before running out.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = stockCountText,
+                                onValueChange = { stockCountText = it.filter { ch -> ch.isDigit() } },
+                                label = { Text(unitTitle) },
+                                suffix = { Text(unitSuffix) },
+                                placeholder = { Text(if (selectedForm == MedicineForm.LIQUID) "100" else "30") },
+                                leadingIcon = { Icon(Icons.Default.Inventory, contentDescription = null) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine = true,
+                                modifier = Modifier
+                                    .weight(1.2f)
+                                    .testTag("input_stock_count")
+                            )
+
+                            OutlinedTextField(
+                                value = lowStockText,
+                                onValueChange = { lowStockText = it.filter { ch -> ch.isDigit() } },
+                                label = { Text("Alert When Below") },
+                                suffix = { Text(unitSuffix) },
+                                placeholder = { Text(if (selectedForm == MedicineForm.LIQUID) "20" else "5") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine = true,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("input_low_stock")
+                            )
+                        }
+
+                        // Quick Presets
+                        val stockPresets = when (selectedForm) {
+                            MedicineForm.LIQUID -> listOf("60", "100", "150", "200", "450")
+                            MedicineForm.TABLET -> listOf("10", "20", "30", "50", "60", "100")
+                            MedicineForm.DROPS -> listOf("15", "30", "50", "100")
+                            else -> listOf("10", "20", "30", "50")
+                        }
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            stockPresets.forEach { preset ->
+                                val isSelected = stockCountText == preset
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = { stockCountText = preset },
+                                    label = { Text("$preset $unitSuffix", style = MaterialTheme.typography.labelSmall) }
+                                )
+                            }
+                        }
+
+                        // Supply calculation banner
+                        val currentStockInt = stockCountText.toIntOrNull() ?: 0
+                        if (currentStockInt > 0) {
+                            val estimatedDays = if (selectedForm == MedicineForm.LIQUID) {
+                                val doseMl = when {
+                                    customDosageText.contains("ml", ignoreCase = true) -> {
+                                        Regex("""(\d+)""").find(customDosageText)?.value?.toIntOrNull() ?: 5
+                                    }
+                                    dosagePreset.contains("ml", ignoreCase = true) -> {
+                                        Regex("""(\d+)""").find(dosagePreset)?.value?.toIntOrNull() ?: 5
+                                    }
+                                    else -> 5
+                                }
+                                currentStockInt / doseMl.coerceAtLeast(1)
+                            } else {
+                                currentStockInt
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                            ) {
+                                Text(
+                                    text = "🗓️ Estimated supply: ~$estimatedDays days remaining before running out",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                                )
+                            }
+                        }
+                    }
                 }
 
                 // Special Instructions

@@ -51,11 +51,20 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -94,10 +103,13 @@ fun HomeScreen(
     onResetToday: () -> Unit,
     onAddMedicine: () -> Unit,
     onStopAlarm: () -> Unit = {},
-    onCustomizeMealTimes: () -> Unit = {}
+    onCustomizeMealTimes: () -> Unit = {},
+    onRefillStock: (Long, Int) -> Unit = { _, _ -> }
 ) {
     val dateDisplay = SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault()).format(Date())
     val medicinesMap = allMedicines.associateBy { it.id }
+    var medicineToRefill by remember { mutableStateOf<MedicineEntity?>(null) }
+    val lowStockMeds = allMedicines.filter { it.isLowStock() }
 
     LazyColumn(
         modifier = Modifier
@@ -113,6 +125,17 @@ fun HomeScreen(
                     alarm = activeAlarm,
                     language = language,
                     onStop = onStopAlarm
+                )
+            }
+        }
+
+        // Low Stock Alert Banner
+        if (lowStockMeds.isNotEmpty()) {
+            item {
+                LowStockAlertCard(
+                    lowStockMedicines = lowStockMeds,
+                    language = language,
+                    onRefillClick = { med -> medicineToRefill = med }
                 )
             }
         }
@@ -172,7 +195,12 @@ fun HomeScreen(
                         language = language,
                         onTake = { onTake(record) },
                         onSkip = { onSkip(record) },
-                        onSnooze = { onSnooze(record) }
+                        onSnooze = { onSnooze(record) },
+                        onRefillClick = {
+                            if (medicine != null) {
+                                medicineToRefill = medicine
+                            }
+                        }
                     )
                 }
             }
@@ -190,6 +218,19 @@ fun HomeScreen(
         item {
             Spacer(modifier = Modifier.height(72.dp))
         }
+    }
+
+    if (medicineToRefill != null) {
+        val med = medicineToRefill!!
+        QuickRefillDialog(
+            medicine = med,
+            language = language,
+            onDismiss = { medicineToRefill = null },
+            onRefill = { amount ->
+                onRefillStock(med.id, amount)
+                medicineToRefill = null
+            }
+        )
     }
 }
 
@@ -464,7 +505,8 @@ fun DoseCard(
     language: AppLanguage,
     onTake: () -> Unit,
     onSkip: () -> Unit,
-    onSnooze: () -> Unit
+    onSnooze: () -> Unit,
+    onRefillClick: () -> Unit = {}
 ) {
     val isTaken = record.isTaken()
     val isSkipped = record.isSkipped()
@@ -583,7 +625,7 @@ fun DoseCard(
                             tint = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         Text(
-                            text = "${record.slotName} (${record.scheduledTime})",
+                            text = "${record.slotName} (${MealTimes.formatTo12Hour(record.scheduledTime)})",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
@@ -613,30 +655,47 @@ fun DoseCard(
 
                 // Stock Counter Pill
                 if (medicine != null) {
-                    val isLowStock = medicine.stockCount <= medicine.lowStockThreshold
-                    val unit = if (medicine.medicineForm.equals("LIQUID", ignoreCase = true)) "ml" else "units"
+                    val isLowStock = medicine.isLowStock()
+                    val isOutOfStock = medicine.isOutOfStock()
+                    val unit = medicine.getStockUnitShort()
                     Surface(
                         shape = RoundedCornerShape(6.dp),
-                        color = if (isLowStock) Color(0xFFFEE2E2) else MaterialTheme.colorScheme.surfaceVariant
+                        color = when {
+                            isOutOfStock -> Color(0xFFFEE2E2)
+                            isLowStock -> Color(0xFFFEF3C7)
+                            else -> MaterialTheme.colorScheme.surfaceVariant
+                        },
+                        border = if (isLowStock || isOutOfStock) BorderStroke(1.dp, if (isOutOfStock) Color(0xFFDC2626) else Color(0xFFD97706)) else null,
+                        modifier = Modifier
+                            .clickable { onRefillClick() }
+                            .testTag("dose_stock_badge_${record.id}")
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            if (isLowStock) {
+                            if (isLowStock || isOutOfStock) {
                                 Icon(
                                     Icons.Default.Warning,
                                     contentDescription = "Low Stock",
-                                    tint = Color(0xFFDC2626),
+                                    tint = if (isOutOfStock) Color(0xFFDC2626) else Color(0xFFD97706),
                                     modifier = Modifier.size(12.dp)
                                 )
                             }
                             Text(
-                                text = if (isLowStock) "Low Stock: ${medicine.stockCount} $unit" else "Stock: ${medicine.stockCount} $unit",
+                                text = when {
+                                    isOutOfStock -> "Out of stock! • Refill"
+                                    isLowStock -> "Low: ${medicine.stockCount} $unit • Refill"
+                                    else -> "Stock: ${medicine.stockCount} $unit"
+                                },
                                 style = MaterialTheme.typography.labelSmall,
-                                color = if (isLowStock) Color(0xFFDC2626) else MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontWeight = if (isLowStock) FontWeight.Bold else FontWeight.Normal
+                                color = when {
+                                    isOutOfStock -> Color(0xFFDC2626)
+                                    isLowStock -> Color(0xFFB45309)
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                fontWeight = if (isLowStock || isOutOfStock) FontWeight.Bold else FontWeight.Normal
                             )
                         }
                     }
@@ -710,7 +769,7 @@ fun DoseCard(
                     }
                     else -> {
                         Text(
-                            text = "Due ${record.scheduledTime}",
+                            text = "Due ${MealTimes.formatTo12Hour(record.scheduledTime)}",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -934,7 +993,7 @@ private fun MealBadge(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = time,
+                text = MealTimes.formatTo12Hour(time),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
@@ -943,4 +1002,251 @@ private fun MealBadge(
         }
     }
 }
+
+@Composable
+fun LowStockAlertCard(
+    lowStockMedicines: List<MedicineEntity>,
+    language: AppLanguage,
+    onRefillClick: (MedicineEntity) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("low_stock_alert_card"),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFFEF2F2) // soft red/amber alert container
+        ),
+        border = BorderStroke(1.dp, Color(0xFFF87171))
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = Color(0xFFDC2626),
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = "${lowStockMedicines.size} " + LanguageManager.get("low_stock_alert", language),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF991B1B)
+                )
+            }
+
+            Text(
+                text = "Restock the following medications before running out:",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF7F1D1D)
+            )
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                lowStockMedicines.forEach { med ->
+                    val isLiquid = med.medicineForm.equals("LIQUID", ignoreCase = true)
+                    val formIcon = if (isLiquid) "💧" else "💊"
+                    val unit = med.getStockUnitShort()
+                    val isOut = med.isOutOfStock()
+
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color.White,
+                        border = BorderStroke(0.5.dp, Color(0xFFFCA5A5))
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "$formIcon ${med.name}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1F2937)
+                                )
+                                Text(
+                                    text = if (isOut) "Out of stock (0 $unit)! Alert: <= ${med.lowStockThreshold}"
+                                    else "Only ${med.stockCount} $unit remaining (Alert at: <= ${med.lowStockThreshold})",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (isOut) Color(0xFFDC2626) else Color(0xFFB45309),
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+
+                            Button(
+                                onClick = { onRefillClick(med) },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                modifier = Modifier.testTag("btn_refill_${med.id}")
+                            ) {
+                                Text(
+                                    text = "+ " + LanguageManager.get("btn_refill", language),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun QuickRefillDialog(
+    medicine: MedicineEntity,
+    language: AppLanguage,
+    onDismiss: () -> Unit,
+    onRefill: (Int) -> Unit
+) {
+    val isLiquid = medicine.medicineForm.equals("LIQUID", ignoreCase = true)
+    val unitLabel = medicine.getStockUnit()
+    val unitShort = medicine.getStockUnitShort()
+    var inputAmount by remember { mutableStateOf("") }
+    val defaultPresets = if (isLiquid) {
+        listOf(30, 60, 100, 200)
+    } else {
+        listOf(10, 20, 30, 50, 100)
+    }
+
+    val parsedAmount = inputAmount.toIntOrNull() ?: 0
+    val newTotal = (medicine.stockCount + parsedAmount).coerceAtLeast(0)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = (if (isLiquid) "💧 " else "💊 ") + LanguageManager.get("btn_refill", language) + ": ${medicine.name}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Current stock status
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "Current Stock: ${medicine.stockCount} $unitLabel",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Low-Stock Warning Level: <= ${medicine.lowStockThreshold} $unitLabel",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                // Quick presets
+                Text(
+                    text = "Quick Presets (+ $unitShort):",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    defaultPresets.forEach { preset ->
+                        OutlinedButton(
+                            onClick = { inputAmount = preset.toString() },
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp)
+                        ) {
+                            Text("+$preset $unitShort", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+
+                // Custom amount text field
+                OutlinedTextField(
+                    value = inputAmount,
+                    onValueChange = { newValue ->
+                        if (newValue.all { it.isDigit() } && newValue.length <= 5) {
+                            inputAmount = newValue
+                        }
+                    },
+                    label = { Text("Quantity to add ($unitShort)") },
+                    placeholder = { Text(if (isLiquid) "e.g. 100" else "e.g. 30") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("input_quick_refill_amount")
+                )
+
+                // Projected total
+                if (parsedAmount > 0) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFDCFCE7)
+                    ) {
+                        Text(
+                            text = "New Projected Stock: $newTotal $unitLabel",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF166534),
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (parsedAmount > 0) {
+                        onRefill(parsedAmount)
+                    }
+                },
+                enabled = parsedAmount > 0,
+                modifier = Modifier.testTag("btn_confirm_quick_refill")
+            ) {
+                Text("+ " + LanguageManager.get("add_to_stock", language))
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.testTag("btn_cancel_quick_refill")
+            ) {
+                Text(LanguageManager.get("cancel", language))
+            }
+        }
+    )
+}
+
 

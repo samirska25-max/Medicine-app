@@ -41,6 +41,12 @@ interface MedicineDao {
     @Query("UPDATE medicines SET stockCount = CASE WHEN stockCount > 0 THEN stockCount - 1 ELSE 0 END WHERE id = :medicineId")
     suspend fun decrementStock(medicineId: Long)
 
+    @Query("UPDATE medicines SET stockCount = CASE WHEN stockCount >= :amount THEN stockCount - :amount ELSE 0 END WHERE id = :medicineId")
+    suspend fun decrementStockByAmount(medicineId: Long, amount: Int)
+
+    @Query("UPDATE medicines SET stockCount = stockCount + :amount WHERE id = :medicineId")
+    suspend fun addStock(medicineId: Long, amount: Int)
+
     @Query("UPDATE medicines SET nextDueDate = :nextDueDate WHERE id = :medicineId")
     suspend fun updateNextDueDate(medicineId: Long, nextDueDate: String)
 

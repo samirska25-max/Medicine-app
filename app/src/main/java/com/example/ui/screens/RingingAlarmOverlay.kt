@@ -48,6 +48,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.util.AppLanguage
 import com.example.util.LanguageManager
+import com.example.util.MealTimes
 import com.example.util.RingingAlarmInfo
 
 @Composable
@@ -115,7 +116,7 @@ fun RingingAlarmDialog(
                     }
 
                     Text(
-                        text = alarmInfo.scheduledTime,
+                        text = MealTimes.formatTo12Hour(alarmInfo.scheduledTime),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary

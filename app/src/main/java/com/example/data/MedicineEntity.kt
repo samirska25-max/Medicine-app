@@ -7,10 +7,10 @@ import java.util.Calendar
 import java.util.Locale
 
 enum class SlotCategory(val displayName: String, val timeRange: String) {
-    MORNING("Morning", "06:00 - 11:59"),
-    AFTERNOON("Afternoon", "12:00 - 16:59"),
-    EVENING("Evening", "17:00 - 20:59"),
-    NIGHT("Night", "21:00 - 05:59");
+    MORNING("Morning", "06:00 AM - 11:59 AM"),
+    AFTERNOON("Afternoon", "12:00 PM - 04:59 PM"),
+    EVENING("Evening", "05:00 PM - 08:59 PM"),
+    NIGHT("Night", "09:00 PM - 05:59 AM");
 
     companion object {
         fun fromTime(timeStr: String): SlotCategory {
@@ -110,9 +110,52 @@ data class MedicineEntity(
         }
     }
 
+    fun getResolvedTime12Hour(customMealTimes: com.example.util.MealTimes? = null): String {
+        val time = getResolvedTime(customMealTimes)
+        return com.example.util.MealTimes.formatTo12Hour(time)
+    }
+
     fun getResolvedSlotTitle(): String {
         val slot = TimingSlot.entries.firstOrNull { it.name == timingSlot }
-        return slot?.title ?: "Custom ($customTime)"
+        return slot?.title ?: "Custom (${com.example.util.MealTimes.formatTo12Hour(customTime)})"
+    }
+
+    fun getStockUnit(): String {
+        return when (MedicineForm.fromName(medicineForm)) {
+            MedicineForm.TABLET -> if (stockCount == 1) "tablet/capsule" else "tablets/capsules"
+            MedicineForm.LIQUID -> "ml"
+            MedicineForm.DROPS -> "drops"
+            MedicineForm.INJECTION -> "units"
+            MedicineForm.OTHER -> "doses"
+        }
+    }
+
+    fun getStockUnitShort(): String {
+        return when (MedicineForm.fromName(medicineForm)) {
+            MedicineForm.TABLET -> "pills"
+            MedicineForm.LIQUID -> "ml"
+            MedicineForm.DROPS -> "drops"
+            MedicineForm.INJECTION -> "units"
+            MedicineForm.OTHER -> "units"
+        }
+    }
+
+    fun isLowStock(): Boolean = stockCount <= lowStockThreshold
+    fun isOutOfStock(): Boolean = stockCount <= 0
+
+    fun getDoseDecrementAmount(): Int {
+        if (medicineForm.equals(MedicineForm.LIQUID.name, ignoreCase = true) || dosage.contains("ml", ignoreCase = true)) {
+            val mlMatch = Regex("""(\d+(?:\.\d+)?)\s*ml""", RegexOption.IGNORE_CASE).find(dosage)
+            if (mlMatch != null) {
+                val value = mlMatch.groupValues[1].toDoubleOrNull() ?: 5.0
+                return kotlin.math.ceil(value).toInt().coerceAtLeast(1)
+            }
+        }
+        val digitMatch = Regex("""(\d+)""").find(dosage)
+        if (digitMatch != null) {
+            return digitMatch.groupValues[1].toIntOrNull()?.coerceAtLeast(1) ?: 1
+        }
+        return 1
     }
 
     fun getResolvedCategory(customMealTimes: com.example.util.MealTimes? = null): SlotCategory {
